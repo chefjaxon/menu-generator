@@ -143,16 +143,25 @@ const TAG_KEYWORDS: Record<string, string[]> = {
   beef: ['beef', 'steak', 'ground beef', 'sirloin', 'ribeye', 'brisket'],
 };
 
-function guessTags(ingredients: string[]): string[] {
-  const allText = ingredients.join(' ').toLowerCase();
+function guessTags(ingredients: Array<{ name: string; quantity: string; unit: string }>): string[] {
   const tags: string[] = [];
 
+  // First add broad category tags (dairy, gluten, etc.) based on keyword matching
+  const allText = ingredients.map((i) => i.name).join(' ').toLowerCase();
   for (const [tag, keywords] of Object.entries(TAG_KEYWORDS)) {
     for (const keyword of keywords) {
       if (allText.includes(keyword)) {
         if (!tags.includes(tag)) tags.push(tag);
         break;
       }
+    }
+  }
+
+  // Then add each individual ingredient name as a tag
+  for (const ing of ingredients) {
+    const tagName = ing.name.toLowerCase().trim();
+    if (tagName && !tags.includes(tagName)) {
+      tags.push(tagName);
     }
   }
 
@@ -280,7 +289,7 @@ function extractFromJsonLd($: cheerio.CheerioAPI): ImportedRecipe | null {
 
   // Guess proteins and tags
   const proteinSwaps = guessProteins(name, ingredientNames);
-  const tags = guessTags(rawIngredients);
+  const tags = guessTags(ingredients);
 
   return {
     name,
@@ -441,7 +450,7 @@ function extractFromHtml($: cheerio.CheerioAPI): ImportedRecipe | null {
   const cuisineType = guessCuisine(name, ingredientTexts);
   const itemType = guessItemType(name, recipeCategory);
   const proteinSwaps = guessProteins(name, ingredientTexts);
-  const tags = guessTags(filteredIngredients);
+  const tags = guessTags(ingredients);
 
   return {
     name,
