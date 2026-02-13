@@ -229,17 +229,17 @@ function extractFromJsonLd($: cheerio.CheerioAPI): ImportedRecipe | null {
   // Parse name
   const name = (recipeData.name || '').trim();
 
-  // Parse description
-  const description = (recipeData.description || '').trim();
+  // Skip description — user will input manually
+  const description = '';
 
-  // Parse instructions
+  // Parse instructions — don't add numbering, the source often already has it
   let instructions = '';
   if (Array.isArray(recipeData.recipeInstructions)) {
     instructions = recipeData.recipeInstructions
-      .map((step: any, i: number) => {
-        if (typeof step === 'string') return `${i + 1}. ${step.trim()}`;
-        if (step.text) return `${i + 1}. ${step.text.trim()}`;
-        if (step.name) return `${i + 1}. ${step.name.trim()}`;
+      .map((step: any) => {
+        if (typeof step === 'string') return step.trim();
+        if (step.text) return step.text.trim();
+        if (step.name) return step.name.trim();
         return '';
       })
       .filter(Boolean)
@@ -299,55 +299,156 @@ function extractFromJsonLd($: cheerio.CheerioAPI): ImportedRecipe | null {
 // ── HTML fallback extraction ────────────────────────────────────────────────
 
 function extractFromHtml($: cheerio.CheerioAPI): ImportedRecipe | null {
-  // Try microdata first, then common selectors
+  // Try microdata first, then common selectors, then Recipe Keeper specific
   let name =
     $('[itemprop="name"]').first().text().trim() ||
     $('h1').first().text().trim() ||
     $('h2').first().text().trim() ||
+    $('title').first().text().trim() ||
     '';
+
+  // Clean up name — remove trailing " - Recipe Keeper" etc.
+  name = name.replace(/\s*[-–|]\s*(Recipe Keeper|RecipeKeeper).*$/i, '').trim();
 
   if (!name) return null;
 
-  const description =
-    $('[itemprop="description"]').first().text().trim() ||
-    $('meta[name="description"]').attr('content')?.trim() ||
-    '';
+  // Skip description — user will input manually
+  const description = '';
 
-  // Instructions
+  // ── Instructions ──────────────────────────────────────────────────────
   let instructions = '';
+
+  // Try microdata
   const instructionEls = $('[itemprop="recipeInstructions"]');
   if (instructionEls.length > 0) {
     const steps: string[] = [];
-    instructionEls.each((i, el) => {
+    instructionEls.each((_, el) => {
       const text = $(el).text().trim();
-      if (text) steps.push(`${i + 1}. ${text}`);
+      if (text) steps.push(text);
     });
     instructions = steps.join('\n');
   }
 
-  // Ingredients
-  const ingredientEls = $('[itemprop="recipeIngredient"], [itemprop="ingredients"]');
+  // Try common selectors if no microdata instructions found
+  if (!instructions) {
+    const instructionSelectors = [
+      '.recipe-directions', '.recipe-instructions', '.directions',
+      '.instructions', '.method', '.steps', '.preparation',
+      '[class*="direction"]', '[class*="instruction"]', '[class*="method"]',
+      '[class*="step"]', '[class*="preparation"]',
+    ];
+    for (const sel of instructionSelectors) {
+      const el = $(sel).first();
+      if (el.length) {
+        // Try to get ordered list items first
+        const lis = el.find('li, p, div').toArray();
+        if (lis.length > 0) {
+          const steps: string[] = [];
+          for (const li of lis) {
+            const text = $(li).text().trim();
+            if (text) steps.push(text);
+          }
+          if (steps.length > 0) {
+            instructions = steps.join('\n');
+            break;
+          }
+        }
+        // Fallback: get entire text
+        const text = el.text().trim();
+        if (text) {
+          instructions = text;
+          break;
+        }
+      }
+    }
+  }
+
+  // ── Ingredients ───────────────────────────────────────────────────────
   const rawIngredients: string[] = [];
-  ingredientEls.each((_, el) => {
+
+  // Try microdata
+  $('[itemprop="recipeIngredient"], [itemprop="ingredients"]').each((_, el) => {
     const text = $(el).text().trim();
     if (text) rawIngredients.push(text);
   });
 
-  // If no microdata ingredients, try common class names
+  // Try common class names
   if (rawIngredients.length === 0) {
-    $('li[class*="ingredient"], .ingredient, .recipe-ingredient').each((_, el) => {
-      const text = $(el).text().trim();
-      if (text) rawIngredients.push(text);
+    const ingredientSelectors = [
+      '.recipe-ingredients li', '.ingredients li', '.ingredient-list li',
+      'li[class*="ingredient"]', '.ingredient',
+      '.recipe-ingredients p', '.ingredients p',
+      '[class*="ingredient"] li', '[class*="ingredient"] p',
+    ];
+    for (const sel of ingredientSelectors) {
+      $(sel).each((_, el) => {
+        const text = $(el).text().trim();
+        if (text) rawIngredients.push(text);
+      });
+      if (rawIngredients.length > 0) break;
+    }
+  }
+
+  // Recipe Keeper specific: look for sections with ingredient-like content
+  // Their pages sometimes use simple divs or spans with no semantic markup
+  if (rawIngredients.length === 0) {
+    // Look for any list that appears before instructions
+    $('ul, ol').each((_, list) => {
+      if (rawIngredients.length > 0) return; // already found
+      const items: string[] = [];
+      $(list).find('li').each((_, li) => {
+        const text = $(li).text().trim();
+        if (text) items.push(text);
+      });
+      // Heuristic: if a list has 3+ items and at least one looks like an ingredient
+      // (has a number or common unit), it's probably the ingredient list
+      if (items.length >= 3) {
+        const looksLikeIngredients = items.some((item) =>
+          /\d/.test(item) || UNITS.some((u) => item.toLowerCase().includes(u))
+        );
+        if (looksLikeIngredients) {
+          rawIngredients.push(...items);
+        }
+      }
     });
+  }
+
+  // Last resort: split text blocks that look like ingredient lists
+  if (rawIngredients.length === 0) {
+    const bodyText = $('body').text();
+    // Look for a block of lines that start with numbers (common ingredient format)
+    const lines = bodyText.split('\n').map((l) => l.trim()).filter(Boolean);
+    let inIngredientBlock = false;
+    const tempIngredients: string[] = [];
+    for (const line of lines) {
+      if (/^\d/.test(line) && line.length < 200) {
+        inIngredientBlock = true;
+        tempIngredients.push(line);
+      } else if (inIngredientBlock && tempIngredients.length >= 3) {
+        break; // end of ingredient block
+      } else if (inIngredientBlock) {
+        // short non-number line might be a header, skip
+        if (line.length < 30) continue;
+        break;
+      }
+    }
+    if (tempIngredients.length >= 3) {
+      rawIngredients.push(...tempIngredients);
+    }
   }
 
   const ingredients = rawIngredients.map(parseIngredientString).filter((i) => i.name);
 
-  // Serving size
+  // ── Serving size ──────────────────────────────────────────────────────
   let servingSize = 1;
-  const yieldText = $('[itemprop="recipeYield"]').first().text().trim();
+  const yieldText = (
+    $('[itemprop="recipeYield"]').first().text().trim() ||
+    $('[class*="yield"]').first().text().trim() ||
+    $('[class*="serving"]').first().text().trim() ||
+    ''
+  );
   if (yieldText) {
-    const parsed = parseInt(yieldText, 10);
+    const parsed = parseInt(yieldText.replace(/[^\d]/g, ''), 10);
     if (!isNaN(parsed) && parsed > 0 && parsed <= 100) servingSize = parsed;
   }
 
