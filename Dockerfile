@@ -34,6 +34,7 @@ COPY --from=base /app/public ./public
 COPY --from=base /app/scripts ./scripts
 COPY --from=base /app/src ./src
 COPY --from=base /app/tsconfig.json ./tsconfig.json
+COPY --from=base /app/next.config.mjs ./next.config.mjs
 
 # Create data directory (fallback if no volume mounted)
 RUN mkdir -p /data
