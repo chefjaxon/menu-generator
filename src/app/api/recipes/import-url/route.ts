@@ -86,7 +86,7 @@ const PROTEIN_KEYWORDS: Record<string, string[]> = {
   chicken: ['chicken', 'poultry', 'drumstick', 'thigh', 'breast', 'wing'],
   steak: ['beef', 'steak', 'ground beef', 'sirloin', 'ribeye', 'filet', 'brisket', 'chuck'],
   pork: ['pork', 'bacon', 'ham', 'prosciutto', 'pancetta', 'sausage', 'chorizo'],
-  seafood: ['shrimp', 'salmon', 'fish', 'tuna', 'crab', 'lobster', 'scallop', 'cod', 'tilapia', 'halibut', 'mahi', 'prawn', 'clam', 'mussel', 'oyster', 'squid', 'calamari', 'anchov'],
+  seafood: ['shrimp', 'salmon', 'fish', 'tuna', 'crab', 'lobster', 'scallop', 'cod', 'tilapia', 'halibut', 'mahi', 'prawn', 'clam', 'mussel', 'oyster', 'squid', 'calamari', 'anchov', 'snapper', 'branzino', 'swordfish', 'trout', 'bass', 'grouper', 'catfish', 'perch', 'walleye', 'mussels'],
   tofu: ['tofu', 'tempeh', 'seitan'],
   egg: ['egg', 'eggs'],
 };
@@ -299,7 +299,7 @@ function extractFromJsonLd($: cheerio.CheerioAPI): ImportedRecipe | null {
 // ── HTML fallback extraction ────────────────────────────────────────────────
 
 function extractFromHtml($: cheerio.CheerioAPI): ImportedRecipe | null {
-  // Try microdata first, then common selectors, then Recipe Keeper specific
+  // Try microdata first, then common selectors
   let name =
     $('[itemprop="name"]').first().text().trim() ||
     $('h1').first().text().trim() ||
@@ -309,6 +309,8 @@ function extractFromHtml($: cheerio.CheerioAPI): ImportedRecipe | null {
 
   // Clean up name — remove trailing " - Recipe Keeper" etc.
   name = name.replace(/\s*[-–|]\s*(Recipe Keeper|RecipeKeeper).*$/i, '').trim();
+  // Remove trailing asterisks (Recipe Keeper sometimes adds **)
+  name = name.replace(/\*+$/, '').trim();
 
   if (!name) return null;
 
@@ -318,47 +320,45 @@ function extractFromHtml($: cheerio.CheerioAPI): ImportedRecipe | null {
   // ── Instructions ──────────────────────────────────────────────────────
   let instructions = '';
 
-  // Try microdata
-  const instructionEls = $('[itemprop="recipeInstructions"]');
-  if (instructionEls.length > 0) {
+  // Recipe Keeper uses: <ul itemprop="recipeInstructions" class="recipe-directions">
+  // with <li> items that contain the text (already numbered)
+  const instructionContainer = $('[itemprop="recipeInstructions"], .recipe-directions');
+  if (instructionContainer.length > 0) {
     const steps: string[] = [];
-    instructionEls.each((_, el) => {
-      const text = $(el).text().trim();
+    // Get individual <li> items within the container
+    const lis = instructionContainer.find('li');
+    if (lis.length > 0) {
+      lis.each((_, el) => {
+        const text = $(el).text().trim();
+        if (text) steps.push(text);
+      });
+    } else {
+      // No <li> items, get the container text
+      const text = instructionContainer.text().trim();
       if (text) steps.push(text);
-    });
+    }
     instructions = steps.join('\n');
   }
 
-  // Try common selectors if no microdata instructions found
+  // Try more selectors if still nothing
   if (!instructions) {
     const instructionSelectors = [
-      '.recipe-directions', '.recipe-instructions', '.directions',
-      '.instructions', '.method', '.steps', '.preparation',
-      '[class*="direction"]', '[class*="instruction"]', '[class*="method"]',
-      '[class*="step"]', '[class*="preparation"]',
+      '.recipe-instructions', '.directions', '.instructions',
+      '.method', '.steps', '.preparation',
     ];
     for (const sel of instructionSelectors) {
       const el = $(sel).first();
       if (el.length) {
-        // Try to get ordered list items first
-        const lis = el.find('li, p, div').toArray();
+        const lis = el.find('li, p').toArray();
         if (lis.length > 0) {
-          const steps: string[] = [];
-          for (const li of lis) {
-            const text = $(li).text().trim();
-            if (text) steps.push(text);
-          }
+          const steps = lis.map((li) => $(li).text().trim()).filter(Boolean);
           if (steps.length > 0) {
             instructions = steps.join('\n');
             break;
           }
         }
-        // Fallback: get entire text
         const text = el.text().trim();
-        if (text) {
-          instructions = text;
-          break;
-        }
+        if (text) { instructions = text; break; }
       }
     }
   }
@@ -366,19 +366,27 @@ function extractFromHtml($: cheerio.CheerioAPI): ImportedRecipe | null {
   // ── Ingredients ───────────────────────────────────────────────────────
   const rawIngredients: string[] = [];
 
-  // Try microdata
-  $('[itemprop="recipeIngredient"], [itemprop="ingredients"]').each((_, el) => {
+  // Recipe Keeper uses: <li itemprop="ingredient"> (singular!)
+  // Also check standard: itemprop="recipeIngredient" and itemprop="ingredients"
+  $('[itemprop="ingredient"], [itemprop="recipeIngredient"], [itemprop="ingredients"]').each((_, el) => {
     const text = $(el).text().trim();
     if (text) rawIngredients.push(text);
   });
 
-  // Try common class names
+  // Try Recipe Keeper class: .recipe-ingredients li
+  if (rawIngredients.length === 0) {
+    $('.recipe-ingredients li').each((_, el) => {
+      const text = $(el).text().trim();
+      if (text) rawIngredients.push(text);
+    });
+  }
+
+  // Try other common selectors
   if (rawIngredients.length === 0) {
     const ingredientSelectors = [
-      '.recipe-ingredients li', '.ingredients li', '.ingredient-list li',
+      '.ingredients li', '.ingredient-list li',
       'li[class*="ingredient"]', '.ingredient',
-      '.recipe-ingredients p', '.ingredients p',
-      '[class*="ingredient"] li', '[class*="ingredient"] p',
+      '[class*="ingredient"] li',
     ];
     for (const sel of ingredientSelectors) {
       $(sel).each((_, el) => {
@@ -389,62 +397,32 @@ function extractFromHtml($: cheerio.CheerioAPI): ImportedRecipe | null {
     }
   }
 
-  // Recipe Keeper specific: look for sections with ingredient-like content
-  // Their pages sometimes use simple divs or spans with no semantic markup
-  if (rawIngredients.length === 0) {
-    // Look for any list that appears before instructions
-    $('ul, ol').each((_, list) => {
-      if (rawIngredients.length > 0) return; // already found
-      const items: string[] = [];
-      $(list).find('li').each((_, li) => {
-        const text = $(li).text().trim();
-        if (text) items.push(text);
-      });
-      // Heuristic: if a list has 3+ items and at least one looks like an ingredient
-      // (has a number or common unit), it's probably the ingredient list
-      if (items.length >= 3) {
-        const looksLikeIngredients = items.some((item) =>
-          /\d/.test(item) || UNITS.some((u) => item.toLowerCase().includes(u))
-        );
-        if (looksLikeIngredients) {
-          rawIngredients.push(...items);
-        }
-      }
+  // Filter out empty items and section headers (Recipe Keeper uses empty <li>
+  // as dividers and section names like "Branzino", "Garnish" as headers)
+  const filteredIngredients = rawIngredients.filter((text) => {
+    if (!text) return false;
+    // Keep items that look like actual ingredients (have a number, unit, or are long enough)
+    const hasNumber = /\d/.test(text) || /[¼½¾⅓⅔⅛⅜⅝⅞]/.test(text);
+    const hasUnit = UNITS.some((u) => {
+      const regex = new RegExp(`\\b${u}\\b`, 'i');
+      return regex.test(text);
     });
-  }
+    const startsWithQuantity = /^[\d¼½¾⅓⅔⅛⅜⅝⅞]/.test(text);
+    // If it starts with a quantity or has a unit, it's an ingredient
+    if (startsWithQuantity || hasUnit || hasNumber) return true;
+    // If it's a short word without numbers, it's likely a section header — skip it
+    if (text.split(' ').length <= 3 && !hasNumber) return false;
+    // Otherwise keep it (might be something like "Zest of ½ lemon")
+    return true;
+  });
 
-  // Last resort: split text blocks that look like ingredient lists
-  if (rawIngredients.length === 0) {
-    const bodyText = $('body').text();
-    // Look for a block of lines that start with numbers (common ingredient format)
-    const lines = bodyText.split('\n').map((l) => l.trim()).filter(Boolean);
-    let inIngredientBlock = false;
-    const tempIngredients: string[] = [];
-    for (const line of lines) {
-      if (/^\d/.test(line) && line.length < 200) {
-        inIngredientBlock = true;
-        tempIngredients.push(line);
-      } else if (inIngredientBlock && tempIngredients.length >= 3) {
-        break; // end of ingredient block
-      } else if (inIngredientBlock) {
-        // short non-number line might be a header, skip
-        if (line.length < 30) continue;
-        break;
-      }
-    }
-    if (tempIngredients.length >= 3) {
-      rawIngredients.push(...tempIngredients);
-    }
-  }
-
-  const ingredients = rawIngredients.map(parseIngredientString).filter((i) => i.name);
+  const ingredients = filteredIngredients.map(parseIngredientString).filter((i) => i.name);
 
   // ── Serving size ──────────────────────────────────────────────────────
   let servingSize = 1;
   const yieldText = (
     $('[itemprop="recipeYield"]').first().text().trim() ||
     $('[class*="yield"]').first().text().trim() ||
-    $('[class*="serving"]').first().text().trim() ||
     ''
   );
   if (yieldText) {
@@ -452,11 +430,18 @@ function extractFromHtml($: cheerio.CheerioAPI): ImportedRecipe | null {
     if (!isNaN(parsed) && parsed > 0 && parsed <= 100) servingSize = parsed;
   }
 
-  const ingredientNames = rawIngredients.map((s) => s.toLowerCase());
-  const cuisineType = guessCuisine(name, ingredientNames);
-  const itemType = guessItemType(name, '');
-  const proteinSwaps = guessProteins(name, ingredientNames);
-  const tags = guessTags(rawIngredients);
+  // ── Category ──────────────────────────────────────────────────────────
+  const recipeCategory = (
+    $('[itemprop="recipeCategory"]').attr('content') ||
+    $('[itemprop="recipeCourse"]').attr('content') ||
+    ''
+  ).toLowerCase();
+
+  const ingredientTexts = filteredIngredients.map((s) => s.toLowerCase());
+  const cuisineType = guessCuisine(name, ingredientTexts);
+  const itemType = guessItemType(name, recipeCategory);
+  const proteinSwaps = guessProteins(name, ingredientTexts);
+  const tags = guessTags(filteredIngredients);
 
   return {
     name,
