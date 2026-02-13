@@ -1,6 +1,6 @@
 import { nanoid } from 'nanoid';
 import { getDb } from '../db';
-import type { Recipe, Ingredient, CuisineType, ItemType } from '../types';
+import type { Recipe, Ingredient, IngredientMod, CuisineType, ItemType } from '../types';
 
 interface RecipeRow {
   id: string;
@@ -37,6 +37,10 @@ function hydrateRecipe(row: RecipeRow): Recipe {
     'SELECT tag FROM recipe_tags WHERE recipe_id = ?'
   ).all(row.id) as Array<{ tag: string }>;
 
+  const mods = db.prepare(
+    'SELECT ingredient_idx, mod_type, swap_option FROM recipe_ingredient_mods WHERE recipe_id = ? ORDER BY ingredient_idx'
+  ).all(row.id) as Array<{ ingredient_idx: number; mod_type: string; swap_option: string | null }>;
+
   return {
     id: row.id,
     name: row.name,
@@ -53,6 +57,11 @@ function hydrateRecipe(row: RecipeRow): Recipe {
       quantity: i.quantity,
       unit: i.unit,
       sortOrder: i.sort_order,
+    })),
+    ingredientMods: mods.map((m) => ({
+      ingredientIdx: m.ingredient_idx,
+      modType: m.mod_type as 'omit' | 'swap',
+      swapOption: m.swap_option,
     })),
     proteinSwaps: proteins.map((p) => p.protein),
     tags: tags.map((t) => t.tag),
@@ -123,6 +132,7 @@ export interface RecipeInput {
   itemType: string;
   servingSize: number;
   ingredients: Array<{ name: string; quantity?: string; unit?: string }>;
+  ingredientMods?: Array<{ ingredientIdx: number; modType: 'omit' | 'swap'; swapOption?: string }>;
   proteinSwaps: string[];
   tags: string[];
 }
@@ -143,6 +153,12 @@ export function createRecipe(data: RecipeInput): Recipe {
         `INSERT INTO recipe_ingredients (id, recipe_id, name, quantity, unit, sort_order)
          VALUES (?, ?, ?, ?, ?, ?)`
       ).run(nanoid(), id, ing.name, ing.quantity || null, ing.unit || null, i);
+    }
+
+    for (const mod of data.ingredientMods || []) {
+      db.prepare(
+        'INSERT INTO recipe_ingredient_mods (id, recipe_id, ingredient_idx, mod_type, swap_option) VALUES (?, ?, ?, ?, ?)'
+      ).run(nanoid(), id, mod.ingredientIdx, mod.modType, mod.swapOption || null);
     }
 
     for (const protein of data.proteinSwaps) {
@@ -181,6 +197,14 @@ export function updateRecipe(id: string, data: RecipeInput): Recipe | null {
         `INSERT INTO recipe_ingredients (id, recipe_id, name, quantity, unit, sort_order)
          VALUES (?, ?, ?, ?, ?, ?)`
       ).run(nanoid(), id, ing.name, ing.quantity || null, ing.unit || null, i);
+    }
+
+    // Replace ingredient mods
+    db.prepare('DELETE FROM recipe_ingredient_mods WHERE recipe_id = ?').run(id);
+    for (const mod of data.ingredientMods || []) {
+      db.prepare(
+        'INSERT INTO recipe_ingredient_mods (id, recipe_id, ingredient_idx, mod_type, swap_option) VALUES (?, ?, ?, ?, ?)'
+      ).run(nanoid(), id, mod.ingredientIdx, mod.modType, mod.swapOption || null);
     }
 
     // Replace proteins

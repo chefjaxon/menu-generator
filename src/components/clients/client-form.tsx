@@ -208,16 +208,23 @@ export function ClientForm({ client }: { client?: Client }) {
   const [restrictionInput, setRestrictionInput] = useState('');
   const [availableProteins, setAvailableProteins] = useState<string[]>([]);
 
+  // Protein groups state
+  const [proteinGroups, setProteinGroups] = useState<Array<{ id: string; name: string; members: string[] }>>([]);
+
   // Notion paste state
   const [showImport, setShowImport] = useState(false);
   const [notionText, setNotionText] = useState('');
   const [parseMessage, setParseMessage] = useState('');
 
-  // Fetch available proteins from API
+  // Fetch available proteins and protein groups from API
   useEffect(() => {
     fetch('/api/proteins')
       .then((res) => res.json())
       .then((data) => setAvailableProteins(data))
+      .catch(() => {});
+    fetch('/api/protein-groups')
+      .then((res) => res.json())
+      .then((data) => setProteinGroups(data))
       .catch(() => {});
   }, []);
 
@@ -561,6 +568,53 @@ export function ClientForm({ client }: { client?: Client }) {
                       onClick={() => updateCompositionCount(protein, getCompositionCount(protein) + 1)}
                       className="w-8 h-8 rounded border border-border text-sm hover:bg-muted disabled:opacity-30"
                       disabled={getCompositionCount(protein) >= 10}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Protein Group Slots */}
+        {proteinGroups.length > 0 && (
+          <div className="mb-4">
+            <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Meals by Protein Group</p>
+            <p className="text-xs text-muted-foreground mb-2">
+              A group slot allows any mix of its member proteins. E.g. 2 Seafood = any combo of salmon, cod, trout, shrimp.
+            </p>
+            <div className="space-y-2">
+              {proteinGroups.map((group) => (
+                <div key={group.id} className="flex items-center gap-3">
+                  <div className="w-28">
+                    <span className="text-sm">{formatLabel(group.name)} meals</span>
+                    <div className="flex flex-wrap gap-0.5 mt-0.5">
+                      {group.members.map((m) => (
+                        <span key={m} className="text-[10px] text-blue-600 bg-blue-50 px-1 rounded">
+                          {formatLabel(m)}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => updateCompositionCount(group.name, getCompositionCount(group.name) - 1)}
+                      className="w-8 h-8 rounded border border-border text-sm hover:bg-muted disabled:opacity-30"
+                      disabled={getCompositionCount(group.name) <= 0}
+                    >
+                      -
+                    </button>
+                    <span className="w-8 text-center text-sm font-medium">
+                      {getCompositionCount(group.name)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => updateCompositionCount(group.name, getCompositionCount(group.name) + 1)}
+                      className="w-8 h-8 rounded border border-border text-sm hover:bg-muted disabled:opacity-30"
+                      disabled={getCompositionCount(group.name) >= 10}
                     >
                       +
                     </button>

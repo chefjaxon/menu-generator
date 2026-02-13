@@ -2,7 +2,8 @@ import { getDb } from './db';
 import { getClientById } from './queries/clients';
 import { getAllRecipes } from './queries/recipes';
 import { getRecentRecipeIdsForClient, createDraftMenu } from './queries/menus';
-import type { Recipe, GenerateResult, SwapSuggestion, Client } from './types';
+import { getAllProteinGroups } from './queries/protein-groups';
+import type { Recipe, GenerateResult, SwapSuggestion, Client, ProteinGroup } from './types';
 
 interface ScoredRecipe {
   recipe: Recipe;
@@ -168,7 +169,21 @@ function pickCandidates(
 }
 
 /**
+ * Build a lookup: group name → list of member proteins.
+ */
+function buildGroupLookup(): Map<string, string[]> {
+  const groups = getAllProteinGroups();
+  const lookup = new Map<string, string[]>();
+  for (const g of groups) {
+    lookup.set(g.name, g.members);
+  }
+  return lookup;
+}
+
+/**
  * Composition-based generation: pick exact counts per protein + snack type.
+ * Supports protein groups: if a category matches a group name (e.g. "seafood"),
+ * any of the group's member proteins (salmon, cod, trout, shrimp) can fill those slots.
  * Uses fresh recipes first, falling back to stale only when fresh pool is exhausted.
  */
 function generateWithComposition(
@@ -180,6 +195,9 @@ function generateWithComposition(
   const usedRecipeIds = new Set<string>();
   const allItems: Array<{ recipeId: string; selectedProtein: string | null }> = [];
   let anyStaleUsed = false;
+
+  // Build group lookup for resolving group-based composition categories
+  const groupLookup = buildGroupLookup();
 
   // Separate composition into protein categories and snack categories
   const proteinCategories = client.menuComposition.filter(
@@ -193,32 +211,82 @@ function generateWithComposition(
   for (const comp of proteinCategories) {
     if (comp.count === 0) continue;
 
-    const protein = comp.category;
+    const category = comp.category;
 
-    const { selected, usedStale } = pickCandidates(
-      freshScored,
-      staleScored,
-      (s) =>
-        s.recipe.itemType === 'meal' &&
-        s.recipe.proteinSwaps.includes(protein),
-      comp.count,
-      usedRecipeIds
-    );
+    // Check if this category is a protein group
+    const groupMembers = groupLookup.get(category);
 
-    if (usedStale) anyStaleUsed = true;
+    if (groupMembers && groupMembers.length > 0) {
+      // GROUP SLOT: any mix of member proteins can fill these slots
+      // Filter to recipes that support ANY member protein the client eats
+      const clientGroupProteins = groupMembers.filter((m) => client.proteins.includes(m));
 
-    if (selected.length < comp.count) {
-      warnings.push(
-        `Could only fill ${selected.length} of ${comp.count} ${comp.category} meal slots.`
+      const { selected, usedStale } = pickCandidates(
+        freshScored,
+        staleScored,
+        (s) =>
+          s.recipe.itemType === 'meal' &&
+          s.recipe.proteinSwaps.some((p) => clientGroupProteins.includes(p)),
+        comp.count,
+        usedRecipeIds
       );
-    }
 
-    for (const item of selected) {
-      usedRecipeIds.add(item.recipe.id);
-      allItems.push({
-        recipeId: item.recipe.id,
-        selectedProtein: protein,
-      });
+      if (usedStale) anyStaleUsed = true;
+
+      if (selected.length < comp.count) {
+        warnings.push(
+          `Could only fill ${selected.length} of ${comp.count} ${category} meal slots.`
+        );
+      }
+
+      // For each selected recipe, pick the best member protein
+      // Rotate through group members for variety
+      let memberIdx = 0;
+      for (const item of selected) {
+        usedRecipeIds.add(item.recipe.id);
+        // Pick a member protein that both the recipe and client support
+        const availableGroupProteins = item.availableProteins.filter((p) =>
+          clientGroupProteins.includes(p)
+        );
+        // Rotate through available group proteins for variety
+        const chosenProtein = availableGroupProteins.length > 0
+          ? availableGroupProteins[memberIdx % availableGroupProteins.length]
+          : clientGroupProteins[0] || category;
+        memberIdx++;
+        allItems.push({
+          recipeId: item.recipe.id,
+          selectedProtein: chosenProtein,
+        });
+      }
+    } else {
+      // SINGLE PROTEIN SLOT: exact protein match (original behavior)
+      const protein = category;
+
+      const { selected, usedStale } = pickCandidates(
+        freshScored,
+        staleScored,
+        (s) =>
+          s.recipe.itemType === 'meal' &&
+          s.recipe.proteinSwaps.includes(protein),
+        comp.count,
+        usedRecipeIds
+      );
+
+      if (usedStale) anyStaleUsed = true;
+
+      if (selected.length < comp.count) {
+        warnings.push(
+          `Could only fill ${selected.length} of ${comp.count} ${category} meal slots.`
+        );
+      }
+
+      for (const item of selected) {
+        usedRecipeIds.add(item.recipe.id);
+        allItems.push({
+          recipeId: item.recipe.id,
+          selectedProtein: protein,
+        });
+      }
     }
   }
 

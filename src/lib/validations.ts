@@ -10,6 +10,12 @@ const ingredientSchema = z.object({
   unit: z.string().optional().default(''),
 });
 
+const ingredientModSchema = z.object({
+  ingredientIdx: z.number().int().min(0),
+  modType: z.enum(['omit', 'swap']),
+  swapOption: z.string().optional().default(''),
+});
+
 export const recipeCreateSchema = z.object({
   name: z.string().min(1, 'Recipe name is required').max(200),
   description: z.string().optional().default(''),
@@ -18,6 +24,7 @@ export const recipeCreateSchema = z.object({
   itemType: itemTypeEnum,
   servingSize: z.number().int().min(1).max(100),
   ingredients: z.array(ingredientSchema).min(1, 'At least one ingredient is required'),
+  ingredientMods: z.array(ingredientModSchema).optional().default([]),
   proteinSwaps: z.array(proteinString),
   tags: z.array(z.string().min(1).max(100)),
 });
