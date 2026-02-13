@@ -1,6 +1,6 @@
 import { nanoid } from 'nanoid';
 import { getDb } from '../db';
-import type { Recipe, Ingredient, Protein, CuisineType, ItemType } from '../types';
+import type { Recipe, Ingredient, CuisineType, ItemType } from '../types';
 
 interface RecipeRow {
   id: string;
@@ -54,7 +54,7 @@ function hydrateRecipe(row: RecipeRow): Recipe {
       unit: i.unit,
       sortOrder: i.sort_order,
     })),
-    proteinSwaps: proteins.map((p) => p.protein as Protein),
+    proteinSwaps: proteins.map((p) => p.protein),
     tags: tags.map((t) => t.tag),
   };
 }

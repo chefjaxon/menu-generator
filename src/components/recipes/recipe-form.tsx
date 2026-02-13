@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Trash2, X } from 'lucide-react';
-import { PROTEINS, CUISINE_TYPES, ITEM_TYPES, COMMON_EXCLUSIONS } from '@/lib/types';
+import { CUISINE_TYPES, ITEM_TYPES, COMMON_EXCLUSIONS } from '@/lib/types';
 import { formatLabel } from '@/lib/utils';
 import type { Recipe } from '@/lib/types';
 
@@ -38,6 +38,14 @@ export function RecipeForm({ recipe, initialData }: { recipe?: Recipe; initialDa
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [tagInput, setTagInput] = useState('');
+  const [availableProteins, setAvailableProteins] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetch('/api/proteins')
+      .then((res) => res.json())
+      .then((data) => setAvailableProteins(data))
+      .catch(() => {});
+  }, []);
 
   const [form, setForm] = useState<FormData>({
     name: initialData?.name ?? recipe?.name ?? '',
@@ -241,7 +249,7 @@ export function RecipeForm({ recipe, initialData }: { recipe?: Recipe; initialDa
         <label className="block text-sm font-medium mb-2">Protein Options</label>
         <p className="text-xs text-muted-foreground mb-2">Select all proteins this dish can be prepared with. Leave empty for protein-free dishes (salads, sides, etc).</p>
         <div className="flex flex-wrap gap-2">
-          {PROTEINS.map((p) => (
+          {availableProteins.map((p) => (
             <button
               key={p}
               type="button"

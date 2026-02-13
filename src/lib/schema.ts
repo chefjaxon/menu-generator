@@ -123,5 +123,30 @@ export function initializeSchema(db: Database.Database): void {
     );
 
     CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
+
+    CREATE TABLE IF NOT EXISTS proteins (
+      id         TEXT PRIMARY KEY,
+      name       TEXT NOT NULL UNIQUE,
+      sort_order INTEGER NOT NULL DEFAULT 0
+    );
   `);
+
+  // Seed default proteins if table is empty
+  const proteinCount = db.prepare('SELECT COUNT(*) as cnt FROM proteins').get() as { cnt: number };
+  if (proteinCount.cnt === 0) {
+    const defaults = [
+      'chicken', 'steak', 'pork', 'salmon', 'cod', 'trout',
+      'shrimp', 'tofu', 'vegetarian', 'egg', 'venison',
+    ];
+    const insert = db.prepare('INSERT INTO proteins (id, name, sort_order) VALUES (?, ?, ?)');
+    for (let i = 0; i < defaults.length; i++) {
+      insert.run(`protein_${defaults[i]}`, defaults[i], i);
+    }
+  }
+
+  // Migration: remove "seafood" from client_proteins and recipe_protein_swaps
+  db.prepare("DELETE FROM client_proteins WHERE protein = 'seafood'").run();
+  db.prepare("DELETE FROM recipe_protein_swaps WHERE protein = 'seafood'").run();
+  // Also remove "seafood" from client_menu_composition
+  db.prepare("DELETE FROM client_menu_composition WHERE category = 'seafood'").run();
 }

@@ -86,7 +86,11 @@ const PROTEIN_KEYWORDS: Record<string, string[]> = {
   chicken: ['chicken', 'poultry', 'drumstick', 'thigh', 'breast', 'wing'],
   steak: ['beef', 'steak', 'ground beef', 'sirloin', 'ribeye', 'filet', 'brisket', 'chuck'],
   pork: ['pork', 'bacon', 'ham', 'prosciutto', 'pancetta', 'sausage', 'chorizo'],
-  seafood: ['shrimp', 'salmon', 'fish', 'tuna', 'crab', 'lobster', 'scallop', 'cod', 'tilapia', 'halibut', 'mahi', 'prawn', 'clam', 'mussel', 'oyster', 'squid', 'calamari', 'anchov', 'snapper', 'branzino', 'swordfish', 'trout', 'bass', 'grouper', 'catfish', 'perch', 'walleye', 'mussels'],
+  salmon: ['salmon'],
+  cod: ['cod'],
+  trout: ['trout'],
+  shrimp: ['shrimp', 'prawn'],
+  venison: ['venison', 'deer'],
   tofu: ['tofu', 'tempeh', 'seitan'],
   egg: ['egg', 'eggs'],
 };

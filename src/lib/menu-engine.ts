@@ -2,12 +2,12 @@ import { getDb } from './db';
 import { getClientById } from './queries/clients';
 import { getAllRecipes } from './queries/recipes';
 import { getRecentRecipeIdsForClient, createDraftMenu } from './queries/menus';
-import type { Recipe, Protein, GenerateResult, SwapSuggestion, Client } from './types';
+import type { Recipe, GenerateResult, SwapSuggestion, Client } from './types';
 
 interface ScoredRecipe {
   recipe: Recipe;
   score: number;
-  availableProteins: Protein[];
+  availableProteins: string[];
 }
 
 /**
@@ -193,7 +193,7 @@ function generateWithComposition(
   for (const comp of proteinCategories) {
     if (comp.count === 0) continue;
 
-    const protein = comp.category as Protein;
+    const protein = comp.category;
 
     const { selected, usedStale } = pickCandidates(
       freshScored,

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { ChefHat, Users, CalendarDays, LayoutDashboard, Plus, Sparkles, LogOut } from 'lucide-react';
+import { ChefHat, Users, CalendarDays, LayoutDashboard, Plus, Sparkles, LogOut, Settings } from 'lucide-react';
 import { useState } from 'react';
 
 const navItems = [
@@ -10,6 +10,7 @@ const navItems = [
   { href: '/recipes', label: 'Recipes', icon: ChefHat },
   { href: '/clients', label: 'Clients', icon: Users },
   { href: '/menus', label: 'Menu History', icon: CalendarDays },
+  { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
 export function Sidebar() {

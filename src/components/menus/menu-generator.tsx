@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Sparkles, RefreshCw, Check, ArrowRight, AlertTriangle } from 'lucide-react';
 import { formatLabel } from '@/lib/utils';
-import type { Client, Menu, GenerateResult, SwapSuggestion, Protein } from '@/lib/types';
+import type { Client, Menu, GenerateResult, SwapSuggestion } from '@/lib/types';
 
 interface Props {
   clients: Client[];

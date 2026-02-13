@@ -1,6 +1,6 @@
 import { nanoid } from 'nanoid';
 import { getDb } from '../db';
-import type { Menu, MenuItem, Protein } from '../types';
+import type { Menu, MenuItem } from '../types';
 import { getRecipeById } from './recipes';
 
 interface MenuRow {
@@ -30,7 +30,7 @@ function hydrateMenu(row: MenuRow, includeRecipes = false): Menu {
     id: ir.id,
     menuId: ir.menu_id,
     recipeId: ir.recipe_id,
-    selectedProtein: ir.selected_protein as Protein | null,
+    selectedProtein: ir.selected_protein,
     sortOrder: ir.sort_order,
     recipe: includeRecipes ? getRecipeById(ir.recipe_id) || undefined : undefined,
   }));

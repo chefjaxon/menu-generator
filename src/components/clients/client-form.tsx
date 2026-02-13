@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { X } from 'lucide-react';
-import { PROTEINS, CUISINE_TYPES, COMMON_EXCLUSIONS } from '@/lib/types';
+import { X, ChevronDown, ChevronUp, ClipboardPaste } from 'lucide-react';
+import { CUISINE_TYPES, COMMON_EXCLUSIONS } from '@/lib/types';
 import { formatLabel } from '@/lib/utils';
 import type { Client, MenuComposition } from '@/lib/types';
 
@@ -21,18 +21,211 @@ interface FormData {
   menuComposition: MenuComposition[];
 }
 
+// ── Notion Paste Parser ──────────────────────────────────────────────────────
+
+const CUISINE_ALIASES: Record<string, string> = {
+  mediterranean: 'mediterranean',
+  'middle eastern': 'mediterranean',
+  japanese: 'asian',
+  chinese: 'asian',
+  korean: 'asian',
+  thai: 'asian',
+  vietnamese: 'asian',
+  asian: 'asian',
+  mexican: 'mexican',
+  'tex-mex': 'mexican',
+  italian: 'italian',
+  american: 'american',
+  indian: 'indian',
+};
+
+function parseNotionPaste(text: string, availableProteins: string[]): {
+  restrictions: string[];
+  cuisineWeights: Record<string, number>;
+  menuComposition: MenuComposition[];
+  proteins: string[];
+  notes: string;
+} {
+  const lines = text.split('\n').map((l) => l.trim());
+  const restrictions: string[] = [];
+  const cuisineWeights: Record<string, number> = {};
+  const menuComposition: MenuComposition[] = [];
+  const proteins: string[] = [];
+  const noteLines: string[] = [];
+
+  // Find section boundaries
+  type Section = 'none' | 'restrictions' | 'adjustments' | 'preferences' | 'balance' | 'cooking' | 'history';
+  let currentSection: Section = 'none';
+
+  for (const line of lines) {
+    const upper = line.toUpperCase();
+
+    // Detect sections
+    if (upper.includes('HARD RESTRICTIONS')) { currentSection = 'restrictions'; continue; }
+    if (upper.includes('ADJUSTMENTS')) { currentSection = 'adjustments'; continue; }
+    if (upper.includes('PREFERENCES') || upper.includes('LIKES')) { currentSection = 'preferences'; continue; }
+    if (upper.includes('WEEKLY MENU BALANCE') || upper.includes('MENU BALANCE')) { currentSection = 'balance'; continue; }
+    if (upper.includes('COOKING NOTES')) { currentSection = 'cooking'; continue; }
+    if (upper.includes('HISTORY') || upper.includes('FEEDBACK')) { currentSection = 'history'; continue; }
+    if (upper.includes('CLIENT OVERVIEW') || upper.includes('SERVICE NOTES')) { currentSection = 'none'; continue; }
+
+    // Skip empty lines and contact info
+    const cleaned = line.replace(/^\*\s*/, '').trim();
+    if (!cleaned) continue;
+
+    // Skip contact info lines
+    if (/^(address|best contact|phone|email|household|1st service|service date)/i.test(cleaned)) continue;
+
+    switch (currentSection) {
+      case 'restrictions': {
+        // "No beef" → "beef", "No added sugar" → "added sugar", "50% salt" → "50% salt"
+        let restriction = cleaned.replace(/^no\s+/i, '').toLowerCase();
+        if (restriction) restrictions.push(restriction);
+        break;
+      }
+
+      case 'adjustments': {
+        // Add adjustments as notes if non-empty
+        if (cleaned) noteLines.push(`Adjustment: ${cleaned}`);
+        break;
+      }
+
+      case 'preferences': {
+        const lower = cleaned.toLowerCase();
+        // Check if this matches a known cuisine
+        let matchedCuisine = false;
+        for (const [alias, cuisine] of Object.entries(CUISINE_ALIASES)) {
+          if (lower.includes(alias)) {
+            cuisineWeights[cuisine] = 5; // Favorite
+            matchedCuisine = true;
+            break;
+          }
+        }
+        // If not a cuisine match, add as a note
+        if (!matchedCuisine) {
+          noteLines.push(cleaned);
+        }
+        break;
+      }
+
+      case 'balance': {
+        // Parse lines like "2 venison", "2 fish (only salmon, cod, trout, and 1 shrimp)"
+        const balanceMatch = cleaned.match(/^(\d+)\s+(.+)/);
+        if (balanceMatch) {
+          const count = parseInt(balanceMatch[1], 10);
+          let proteinText = balanceMatch[2].toLowerCase();
+
+          // Check for parenthetical constraints
+          const parenMatch = proteinText.match(/^(.+?)\s*\((.+)\)/);
+          if (parenMatch) {
+            proteinText = parenMatch[1].trim();
+            const constraint = parenMatch[2].trim();
+            noteLines.push(`${formatLabel(proteinText)} note: ${constraint}`);
+          }
+
+          // "fish" is a generic term — check for specific fish proteins
+          if (proteinText === 'fish') {
+            // Look for specific fish in the constraint or just use "fish" as a note
+            // The actual proteins should be set from the parenthetical
+            // For now, add as a composition entry — user can adjust
+            const fishProteins = availableProteins.filter((p) =>
+              ['salmon', 'cod', 'trout', 'halibut', 'seabass', 'tilapia', 'mahi'].includes(p)
+            );
+            if (fishProteins.length > 0) {
+              // Distribute count among available fish proteins — just mark 'fish' note
+              noteLines.push(`Fish balance: ${count} fish meals total`);
+              // Add each available fish protein to the protein list
+              for (const fp of fishProteins) {
+                if (!proteins.includes(fp)) proteins.push(fp);
+              }
+            }
+          } else {
+            // Check for sub-items like "at least 1 tofu, 1 bean/chickpea"
+            const subItems = proteinText.split(',').map((s) => s.trim());
+            let addedSub = false;
+
+            for (const sub of subItems) {
+              const subMatch = sub.match(/(?:at\s+least\s+)?(\d+)\s+(.+)/);
+              if (subMatch) {
+                const subCount = parseInt(subMatch[1], 10);
+                const subProtein = subMatch[2].replace(/[()]/g, '').trim();
+                // Check if this is a known protein
+                const matchedProtein = availableProteins.find((p) => subProtein.includes(p));
+                if (matchedProtein) {
+                  menuComposition.push({ category: matchedProtein, count: subCount });
+                  if (!proteins.includes(matchedProtein)) proteins.push(matchedProtein);
+                  addedSub = true;
+                } else {
+                  noteLines.push(`${formatLabel(proteinText)}: ${sub}`);
+                }
+              }
+            }
+
+            if (!addedSub) {
+              // Simple case: "2 venison"
+              const matchedProtein = availableProteins.find((p) => proteinText.includes(p));
+              if (matchedProtein) {
+                menuComposition.push({ category: matchedProtein, count });
+                if (!proteins.includes(matchedProtein)) proteins.push(matchedProtein);
+              } else {
+                // Protein not in DB — add as note
+                noteLines.push(`Menu balance: ${count} ${proteinText} (protein not in system)`);
+              }
+            }
+          }
+        }
+        break;
+      }
+
+      case 'cooking': {
+        if (cleaned.toLowerCase() !== 'other notes:') {
+          noteLines.push(cleaned);
+        }
+        break;
+      }
+
+      // Ignore history/feedback and other sections
+      default:
+        break;
+    }
+  }
+
+  return {
+    restrictions,
+    cuisineWeights,
+    menuComposition,
+    proteins,
+    notes: noteLines.filter(Boolean).join('\n'),
+  };
+}
+
+// ── Component ────────────────────────────────────────────────────────────────
+
 export function ClientForm({ client }: { client?: Client }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [restrictionInput, setRestrictionInput] = useState('');
+  const [availableProteins, setAvailableProteins] = useState<string[]>([]);
+
+  // Notion paste state
+  const [showImport, setShowImport] = useState(false);
+  const [notionText, setNotionText] = useState('');
+  const [parseMessage, setParseMessage] = useState('');
+
+  // Fetch available proteins from API
+  useEffect(() => {
+    fetch('/api/proteins')
+      .then((res) => res.json())
+      .then((data) => setAvailableProteins(data))
+      .catch(() => {});
+  }, []);
 
   const defaultCuisinePrefs: CuisinePrefField[] = CUISINE_TYPES.map((c) => {
     const existing = client?.cuisinePreferences.find((p) => p.cuisineType === c);
     return { cuisineType: c, weight: existing?.weight || 3 };
   });
 
-  // Build default composition from existing client or empty
   const defaultComposition: MenuComposition[] = client?.menuComposition.length
     ? client.menuComposition
     : [];
@@ -56,15 +249,12 @@ export function ClientForm({ client }: { client?: Client }) {
         ? prev.proteins.filter((v) => v !== protein)
         : [...prev.proteins, protein];
 
-      // Update composition: add entry for new proteins, remove for deselected
       let newComposition = [...prev.menuComposition];
       if (newProteins.includes(protein) && !prev.proteins.includes(protein)) {
-        // Protein added — add composition entry if not present
         if (!newComposition.find((c) => c.category === protein)) {
           newComposition.push({ category: protein, count: 0 });
         }
       } else if (!newProteins.includes(protein)) {
-        // Protein removed — remove composition entry
         newComposition = newComposition.filter((c) => c.category !== protein);
       }
 
@@ -124,6 +314,64 @@ export function ClientForm({ client }: { client?: Client }) {
     }));
   }
 
+  // ── Notion Parse Handler ─────────────────────────────────────────────────
+
+  function handleParsePaste() {
+    if (!notionText.trim()) return;
+
+    const parsed = parseNotionPaste(notionText, availableProteins);
+
+    setForm((prev) => {
+      // Merge restrictions (avoid duplicates)
+      const allRestrictions = [...new Set([...prev.restrictions, ...parsed.restrictions])];
+
+      // Merge proteins (avoid duplicates)
+      const allProteins = [...new Set([...prev.proteins, ...parsed.proteins])];
+
+      // Update cuisine weights
+      const newCuisinePrefs = prev.cuisinePreferences.map((cp) => {
+        if (parsed.cuisineWeights[cp.cuisineType]) {
+          return { ...cp, weight: parsed.cuisineWeights[cp.cuisineType] };
+        }
+        return cp;
+      });
+
+      // Merge composition (add new, keep existing)
+      const newComposition = [...prev.menuComposition];
+      for (const comp of parsed.menuComposition) {
+        const existing = newComposition.find((c) => c.category === comp.category);
+        if (existing) {
+          existing.count = comp.count;
+        } else {
+          newComposition.push(comp);
+        }
+      }
+      // Also add composition entries for proteins that don't have one yet
+      for (const p of allProteins) {
+        if (!newComposition.find((c) => c.category === p)) {
+          newComposition.push({ category: p, count: 0 });
+        }
+      }
+
+      // Merge notes
+      const noteParts = [prev.notes, parsed.notes].filter(Boolean);
+      const allNotes = noteParts.join('\n');
+
+      return {
+        ...prev,
+        restrictions: allRestrictions,
+        proteins: allProteins,
+        cuisinePreferences: newCuisinePrefs,
+        menuComposition: newComposition,
+        notes: allNotes,
+      };
+    });
+
+    setParseMessage('Parsed successfully! Review the form below and adjust as needed.');
+    setNotionText('');
+    setShowImport(false);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -141,7 +389,6 @@ export function ClientForm({ client }: { client?: Client }) {
       return;
     }
 
-    // Only send cuisine preferences with non-default weights
     const payload = {
       ...form,
       itemsPerMenu: totalItems,
@@ -181,7 +428,6 @@ export function ClientForm({ client }: { client?: Client }) {
     5: 'Favorite',
   };
 
-  // Suggestions that aren't already added
   const availableSuggestions = COMMON_EXCLUSIONS.filter(
     (s) => !form.restrictions.includes(s)
   );
@@ -191,6 +437,52 @@ export function ClientForm({ client }: { client?: Client }) {
       {error && (
         <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">
           {error}
+        </div>
+      )}
+
+      {parseMessage && (
+        <div className="p-3 bg-green-50 border border-green-200 text-green-700 rounded-md text-sm">
+          {parseMessage}
+        </div>
+      )}
+
+      {/* Notion Import Section */}
+      {!client && (
+        <div className="border border-border rounded-md">
+          <button
+            type="button"
+            onClick={() => { setShowImport(!showImport); setParseMessage(''); }}
+            className="flex items-center justify-between w-full px-4 py-3 text-sm font-medium hover:bg-muted/50 transition-colors"
+          >
+            <span className="flex items-center gap-2">
+              <ClipboardPaste className="h-4 w-4" />
+              Import from Notion
+            </span>
+            {showImport ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </button>
+
+          {showImport && (
+            <div className="px-4 pb-4 space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Copy a client profile from your Notion database and paste it below. The parser will extract restrictions, cuisine preferences, and menu balance.
+              </p>
+              <textarea
+                value={notionText}
+                onChange={(e) => setNotionText(e.target.value)}
+                rows={12}
+                className="w-full px-3 py-2 border border-border rounded-md text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring"
+                placeholder={`CLIENT OVERVIEW\nAddress: ...\nHARD RESTRICTIONS (NEVER USE)\n* No beef\n* No dairy\nPREFERENCES / LIKES\n* Mediterranean\n* Japanese\nWEEKLY MENU BALANCE\n* 2 venison\n* 2 fish (only salmon, cod, trout)\n* 2 vegetarian`}
+              />
+              <button
+                type="button"
+                onClick={handleParsePaste}
+                disabled={!notionText.trim()}
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
+              >
+                Parse & Fill Form
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -221,7 +513,7 @@ export function ClientForm({ client }: { client?: Client }) {
         <label className="block text-sm font-medium mb-2">Protein Preferences *</label>
         <p className="text-xs text-muted-foreground mb-2">Select all protein types this client eats.</p>
         <div className="flex flex-wrap gap-2">
-          {PROTEINS.map((p) => (
+          {availableProteins.map((p) => (
             <button
               key={p}
               type="button"
@@ -345,7 +637,6 @@ export function ClientForm({ client }: { client?: Client }) {
           Add any ingredients or food types this client cannot eat. Recipes containing these will be excluded.
         </p>
 
-        {/* Current exclusions as chips */}
         {form.restrictions.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mb-3">
             {form.restrictions.map((r) => (
@@ -366,7 +657,6 @@ export function ClientForm({ client }: { client?: Client }) {
           </div>
         )}
 
-        {/* Text input */}
         <div className="flex gap-2 mb-2">
           <input
             type="text"
@@ -386,7 +676,6 @@ export function ClientForm({ client }: { client?: Client }) {
           </button>
         </div>
 
-        {/* Suggestions */}
         {availableSuggestions.length > 0 && (
           <div>
             <p className="text-xs text-muted-foreground mb-1">Common exclusions:</p>

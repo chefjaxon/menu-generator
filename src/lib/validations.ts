@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const proteinEnum = z.enum(['chicken', 'steak', 'pork', 'seafood', 'tofu', 'vegetarian', 'egg']);
+export const proteinString = z.string().min(1, 'Protein name is required');
 export const cuisineEnum = z.enum(['mexican', 'italian', 'asian', 'mediterranean', 'american', 'indian', 'other']);
 export const itemTypeEnum = z.enum(['meal', 'sweet-snack', 'savory-snack']);
 
@@ -18,7 +18,7 @@ export const recipeCreateSchema = z.object({
   itemType: itemTypeEnum,
   servingSize: z.number().int().min(1).max(100),
   ingredients: z.array(ingredientSchema).min(1, 'At least one ingredient is required'),
-  proteinSwaps: z.array(proteinEnum),
+  proteinSwaps: z.array(proteinString),
   tags: z.array(z.string().min(1).max(100)),
 });
 
@@ -38,7 +38,7 @@ export const clientCreateSchema = z.object({
   name: z.string().min(1, 'Client name is required').max(200),
   itemsPerMenu: z.number().int().min(0).max(50).optional(),
   notes: z.string().optional().default(''),
-  proteins: z.array(proteinEnum).min(1, 'Select at least one protein'),
+  proteins: z.array(proteinString).min(1, 'Select at least one protein'),
   restrictions: z.array(z.string().min(1).max(100)),
   cuisinePreferences: z.array(cuisinePreferenceSchema),
   menuComposition: z.array(menuCompositionSchema).optional().default([]),
@@ -54,7 +54,7 @@ export const swapMenuItemSchema = z.object({
   menuId: z.string().min(1),
   menuItemId: z.string().min(1),
   newRecipeId: z.string().min(1),
-  selectedProtein: proteinEnum.optional(),
+  selectedProtein: proteinString.optional(),
 });
 
 export const finalizeMenuSchema = z.object({

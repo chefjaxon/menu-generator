@@ -1,8 +1,6 @@
-export type Protein = 'chicken' | 'steak' | 'pork' | 'seafood' | 'tofu' | 'vegetarian' | 'egg';
 export type CuisineType = 'mexican' | 'italian' | 'asian' | 'mediterranean' | 'american' | 'indian' | 'other';
 export type ItemType = 'meal' | 'sweet-snack' | 'savory-snack';
 
-export const PROTEINS: Protein[] = ['chicken', 'steak', 'pork', 'seafood', 'tofu', 'vegetarian', 'egg'];
 export const CUISINE_TYPES: CuisineType[] = ['mexican', 'italian', 'asian', 'mediterranean', 'american', 'indian', 'other'];
 export const ITEM_TYPES: ItemType[] = ['meal', 'sweet-snack', 'savory-snack'];
 
@@ -35,7 +33,7 @@ export interface Recipe {
   createdAt: string;
   updatedAt: string;
   ingredients: Ingredient[];
-  proteinSwaps: Protein[];
+  proteinSwaps: string[];
   tags: string[];
 }
 
@@ -56,7 +54,7 @@ export interface Client {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
-  proteins: Protein[];
+  proteins: string[];
   restrictions: string[];
   cuisinePreferences: CuisinePreference[];
   menuComposition: MenuComposition[];
@@ -66,7 +64,7 @@ export interface MenuItem {
   id: string;
   menuId: string;
   recipeId: string;
-  selectedProtein: Protein | null;
+  selectedProtein: string | null;
   sortOrder: number;
   recipe?: Recipe;
 }
@@ -84,7 +82,7 @@ export interface Menu {
 export interface SwapSuggestion {
   recipe: Recipe;
   score: number;
-  availableProteins: Protein[];
+  availableProteins: string[];
 }
 
 export interface GenerateResult {

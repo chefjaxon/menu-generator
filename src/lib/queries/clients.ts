@@ -1,6 +1,6 @@
 import { nanoid } from 'nanoid';
 import { getDb } from '../db';
-import type { Client, Protein, CuisineType, MenuComposition } from '../types';
+import type { Client, CuisineType, MenuComposition } from '../types';
 
 interface ClientRow {
   id: string;
@@ -46,7 +46,7 @@ function hydrateClient(row: ClientRow): Client {
     notes: row.notes,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-    proteins: proteins.map((p) => p.protein as Protein),
+    proteins: proteins.map((p) => p.protein),
     restrictions: restrictions.map((r) => r.restriction),
     cuisinePreferences: cuisinePrefs.map((c) => ({
       cuisineType: c.cuisine_type as CuisineType,
