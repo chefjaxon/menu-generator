@@ -1,8 +1,8 @@
-export type Protein = 'chicken' | 'steak' | 'pork' | 'seafood' | 'tofu' | 'vegetarian';
+export type Protein = 'chicken' | 'steak' | 'pork' | 'seafood' | 'tofu' | 'vegetarian' | 'egg';
 export type CuisineType = 'mexican' | 'italian' | 'asian' | 'mediterranean' | 'american' | 'indian' | 'other';
 export type ItemType = 'meal' | 'sweet-snack' | 'savory-snack';
 
-export const PROTEINS: Protein[] = ['chicken', 'steak', 'pork', 'seafood', 'tofu', 'vegetarian'];
+export const PROTEINS: Protein[] = ['chicken', 'steak', 'pork', 'seafood', 'tofu', 'vegetarian', 'egg'];
 export const CUISINE_TYPES: CuisineType[] = ['mexican', 'italian', 'asian', 'mediterranean', 'american', 'indian', 'other'];
 export const ITEM_TYPES: ItemType[] = ['meal', 'sweet-snack', 'savory-snack'];
 

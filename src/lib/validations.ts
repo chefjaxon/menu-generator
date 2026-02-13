@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const proteinEnum = z.enum(['chicken', 'steak', 'pork', 'seafood', 'tofu', 'vegetarian']);
+export const proteinEnum = z.enum(['chicken', 'steak', 'pork', 'seafood', 'tofu', 'vegetarian', 'egg']);
 export const cuisineEnum = z.enum(['mexican', 'italian', 'asian', 'mediterranean', 'american', 'indian', 'other']);
 export const itemTypeEnum = z.enum(['meal', 'sweet-snack', 'savory-snack']);
 

@@ -33,26 +33,26 @@ const RECIPE_TAG_SUGGESTIONS = [
   'white flour', 'white rice', 'fermented foods', 'coffee',
 ];
 
-export function RecipeForm({ recipe }: { recipe?: Recipe }) {
+export function RecipeForm({ recipe, initialData }: { recipe?: Recipe; initialData?: Partial<FormData> | null }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [tagInput, setTagInput] = useState('');
 
   const [form, setForm] = useState<FormData>({
-    name: recipe?.name || '',
-    description: recipe?.description || '',
-    instructions: recipe?.instructions || '',
-    cuisineType: recipe?.cuisineType || 'american',
-    itemType: recipe?.itemType || 'meal',
-    servingSize: recipe?.servingSize || 1,
-    ingredients: recipe?.ingredients.map((i) => ({
+    name: initialData?.name ?? recipe?.name ?? '',
+    description: initialData?.description ?? recipe?.description ?? '',
+    instructions: initialData?.instructions ?? recipe?.instructions ?? '',
+    cuisineType: initialData?.cuisineType ?? recipe?.cuisineType ?? 'american',
+    itemType: initialData?.itemType ?? recipe?.itemType ?? 'meal',
+    servingSize: initialData?.servingSize ?? recipe?.servingSize ?? 1,
+    ingredients: initialData?.ingredients ?? recipe?.ingredients?.map((i) => ({
       name: i.name,
       quantity: i.quantity || '',
       unit: i.unit || '',
-    })) || [{ name: '', quantity: '', unit: '' }],
-    proteinSwaps: recipe?.proteinSwaps || [],
-    tags: recipe?.tags || [],
+    })) ?? [{ name: '', quantity: '', unit: '' }],
+    proteinSwaps: initialData?.proteinSwaps ?? recipe?.proteinSwaps ?? [],
+    tags: initialData?.tags ?? recipe?.tags ?? [],
   });
 
   function updateField<K extends keyof FormData>(key: K, value: FormData[K]) {
