@@ -20,6 +20,21 @@ if (!fs.existsSync(dir)) {
   fs.mkdirSync(dir, { recursive: true });
 }
 
+// Skip seeding if the database already exists and has data
+if (fs.existsSync(DB_PATH)) {
+  const existingDb = new Database(DB_PATH);
+  const row = existingDb.prepare("SELECT count(*) as cnt FROM sqlite_master WHERE type='table' AND name='recipes'").get() as { cnt: number };
+  if (row.cnt > 0) {
+    const recipeCount = existingDb.prepare("SELECT count(*) as cnt FROM recipes").get() as { cnt: number };
+    if (recipeCount.cnt > 0) {
+      console.log(`Database already seeded (${recipeCount.cnt} recipes). Skipping.`);
+      existingDb.close();
+      process.exit(0);
+    }
+  }
+  existingDb.close();
+}
+
 const db = new Database(DB_PATH);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');

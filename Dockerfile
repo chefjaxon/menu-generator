@@ -43,4 +43,4 @@ RUN mkdir -p /data
 EXPOSE 3000
 
 # Seed the database if it doesn't exist, then start the app
-CMD sh -c "npx tsx scripts/seed.ts && npm run start"
+CMD sh -c "node node_modules/.bin/tsx scripts/seed.ts && npm run start"
