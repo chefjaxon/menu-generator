@@ -1,6 +1,8 @@
 import { getAllClients } from '@/lib/queries/clients';
 import { MenuGenerator } from '@/components/menus/menu-generator';
 
+export const dynamic = 'force-dynamic';
+
 export default function GenerateMenuPage() {
   const clients = getAllClients();
 
