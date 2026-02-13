@@ -3,6 +3,8 @@ import { Plus } from 'lucide-react';
 import { getAllRecipes } from '@/lib/queries/recipes';
 import { RecipeTable } from '@/components/recipes/recipe-table';
 
+export const dynamic = 'force-dynamic';
+
 export default function RecipesPage() {
   const recipes = getAllRecipes();
 

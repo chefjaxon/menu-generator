@@ -4,6 +4,8 @@ import { getAllMenus } from '@/lib/queries/menus';
 import { getAllClients } from '@/lib/queries/clients';
 import { MenuHistoryTable } from '@/components/menus/menu-history-table';
 
+export const dynamic = 'force-dynamic';
+
 export default function MenusPage() {
   const menus = getAllMenus();
   const clients = getAllClients();

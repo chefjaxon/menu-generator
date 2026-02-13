@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { ChefHat, Users, CalendarDays, Sparkles } from 'lucide-react';
 import { getDb } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 function getStats() {
   const db = getDb();
   const recipeCount = (db.prepare('SELECT COUNT(*) as count FROM recipes').get() as { count: number }).count;

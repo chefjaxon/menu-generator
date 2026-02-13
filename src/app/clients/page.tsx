@@ -3,6 +3,8 @@ import { Plus } from 'lucide-react';
 import { getAllClients } from '@/lib/queries/clients';
 import { ClientTable } from '@/components/clients/client-table';
 
+export const dynamic = 'force-dynamic';
+
 export default function ClientsPage() {
   const clients = getAllClients();
 
