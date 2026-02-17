@@ -14,24 +14,12 @@ export const COMMON_EXCLUSIONS: string[] = [
   'cod', 'salmon', 'shrimp',
 ];
 
-export interface IngredientMod {
-  ingredientIdx: number;
-  modType: 'omit' | 'swap';
-  swapOption: string | null;
-}
-
 export interface Ingredient {
   id: string;
   name: string;
   quantity: string | null;
   unit: string | null;
   sortOrder: number;
-}
-
-export interface ProteinGroup {
-  id: string;
-  name: string;
-  members: string[];
 }
 
 export interface Recipe {
@@ -45,7 +33,6 @@ export interface Recipe {
   createdAt: string;
   updatedAt: string;
   ingredients: Ingredient[];
-  ingredientMods: IngredientMod[];
   proteinSwaps: string[];
   tags: string[];
 }

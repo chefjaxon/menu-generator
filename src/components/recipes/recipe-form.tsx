@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Trash2, X, ArrowRightLeft, MinusCircle } from 'lucide-react';
+import { Plus, Trash2, X } from 'lucide-react';
 import { CUISINE_TYPES, ITEM_TYPES, COMMON_EXCLUSIONS } from '@/lib/types';
 import { formatLabel } from '@/lib/utils';
 import type { Recipe } from '@/lib/types';
@@ -13,12 +13,6 @@ interface IngredientField {
   unit: string;
 }
 
-interface IngredientModField {
-  ingredientIdx: number;
-  modType: 'omit' | 'swap';
-  swapOption: string;
-}
-
 interface FormData {
   name: string;
   description: string;
@@ -27,7 +21,6 @@ interface FormData {
   itemType: string;
   servingSize: number;
   ingredients: IngredientField[];
-  ingredientMods: IngredientModField[];
   proteinSwaps: string[];
   tags: string[];
 }
@@ -66,11 +59,6 @@ export function RecipeForm({ recipe, initialData }: { recipe?: Recipe; initialDa
       quantity: i.quantity || '',
       unit: i.unit || '',
     })) ?? [{ name: '', quantity: '', unit: '' }],
-    ingredientMods: initialData?.ingredientMods ?? recipe?.ingredientMods?.map((m) => ({
-      ingredientIdx: m.ingredientIdx,
-      modType: m.modType,
-      swapOption: m.swapOption || '',
-    })) ?? [],
     proteinSwaps: initialData?.proteinSwaps ?? recipe?.proteinSwaps ?? [],
     tags: initialData?.tags ?? recipe?.tags ?? [],
   });
@@ -90,12 +78,6 @@ export function RecipeForm({ recipe, initialData }: { recipe?: Recipe; initialDa
     setForm((prev) => ({
       ...prev,
       ingredients: prev.ingredients.filter((_, i) => i !== index),
-      ingredientMods: prev.ingredientMods
-        .filter((m) => m.ingredientIdx !== index)
-        .map((m) => ({
-          ...m,
-          ingredientIdx: m.ingredientIdx > index ? m.ingredientIdx - 1 : m.ingredientIdx,
-        })),
     }));
   }
 
@@ -104,32 +86,6 @@ export function RecipeForm({ recipe, initialData }: { recipe?: Recipe; initialDa
       ...prev,
       ingredients: prev.ingredients.map((ing, i) =>
         i === index ? { ...ing, [field]: value } : ing
-      ),
-    }));
-  }
-
-  function getModForIngredient(index: number): IngredientModField | undefined {
-    return form.ingredientMods.find((m) => m.ingredientIdx === index);
-  }
-
-  function toggleIngredientMod(index: number, modType: 'omit' | 'swap') {
-    setForm((prev) => {
-      const existing = prev.ingredientMods.find((m) => m.ingredientIdx === index);
-      if (existing && existing.modType === modType) {
-        // Remove the mod (toggle off)
-        return { ...prev, ingredientMods: prev.ingredientMods.filter((m) => m.ingredientIdx !== index) };
-      }
-      // Add or replace the mod
-      const filtered = prev.ingredientMods.filter((m) => m.ingredientIdx !== index);
-      return { ...prev, ingredientMods: [...filtered, { ingredientIdx: index, modType, swapOption: '' }] };
-    });
-  }
-
-  function updateModSwapOption(index: number, swapOption: string) {
-    setForm((prev) => ({
-      ...prev,
-      ingredientMods: prev.ingredientMods.map((m) =>
-        m.ingredientIdx === index ? { ...m, swapOption } : m
       ),
     }));
   }
@@ -174,24 +130,9 @@ export function RecipeForm({ recipe, initialData }: { recipe?: Recipe; initialDa
       return;
     }
 
-    // Re-map ingredient mods: only keep mods for ingredients that survived filtering,
-    // and re-index them based on the filtered list
-    const originalIndices = form.ingredients
-      .map((ing, i) => ({ ing, i }))
-      .filter(({ ing }) => ing.name.trim())
-      .map(({ i }) => i);
-
-    const remappedMods = form.ingredientMods
-      .filter((m) => originalIndices.includes(m.ingredientIdx))
-      .map((m) => ({
-        ...m,
-        ingredientIdx: originalIndices.indexOf(m.ingredientIdx),
-      }));
-
     const payload = {
       ...form,
       ingredients: filteredIngredients,
-      ingredientMods: remappedMods,
     };
 
     try {
@@ -402,94 +343,41 @@ export function RecipeForm({ recipe, initialData }: { recipe?: Recipe; initialDa
             Add
           </button>
         </div>
-        <p className="text-xs text-muted-foreground mb-2">
-          Mark ingredients that can be omitted or swapped with another ingredient from your database.
-        </p>
         <div className="space-y-2">
-          {form.ingredients.map((ing, i) => {
-            const mod = getModForIngredient(i);
-            return (
-              <div key={i} className="space-y-1">
-                <div className="flex gap-2 items-center">
-                  <input
-                    type="text"
-                    value={ing.name}
-                    onChange={(e) => updateIngredient(i, 'name', e.target.value)}
-                    placeholder="Ingredient name"
-                    className="flex-1 px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
-                  <input
-                    type="text"
-                    value={ing.quantity}
-                    onChange={(e) => updateIngredient(i, 'quantity', e.target.value)}
-                    placeholder="Qty"
-                    className="w-20 px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
-                  <input
-                    type="text"
-                    value={ing.unit}
-                    onChange={(e) => updateIngredient(i, 'unit', e.target.value)}
-                    placeholder="Unit"
-                    className="w-20 px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => toggleIngredientMod(i, 'omit')}
-                    className={`p-2 transition-colors ${
-                      mod?.modType === 'omit'
-                        ? 'text-amber-600 bg-amber-50 rounded-md'
-                        : 'text-muted-foreground hover:text-amber-600'
-                    }`}
-                    title="Can be omitted"
-                  >
-                    <MinusCircle className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => toggleIngredientMod(i, 'swap')}
-                    className={`p-2 transition-colors ${
-                      mod?.modType === 'swap'
-                        ? 'text-blue-600 bg-blue-50 rounded-md'
-                        : 'text-muted-foreground hover:text-blue-600'
-                    }`}
-                    title="Can be swapped"
-                  >
-                    <ArrowRightLeft className="h-4 w-4" />
-                  </button>
-                  {form.ingredients.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeIngredient(i)}
-                      className="p-2 text-muted-foreground hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
-                {mod?.modType === 'omit' && (
-                  <div className="ml-1 text-xs text-amber-600 flex items-center gap-1">
-                    <MinusCircle className="h-3 w-3" />
-                    Can be omitted from this recipe
-                  </div>
-                )}
-                {mod?.modType === 'swap' && (
-                  <div className="ml-1 flex items-center gap-2">
-                    <span className="text-xs text-blue-600 flex items-center gap-1">
-                      <ArrowRightLeft className="h-3 w-3" />
-                      Swap with:
-                    </span>
-                    <input
-                      type="text"
-                      value={mod.swapOption}
-                      onChange={(e) => updateModSwapOption(i, e.target.value)}
-                      placeholder="Replacement ingredient name"
-                      className="flex-1 px-2 py-1 border border-blue-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-300"
-                    />
-                  </div>
-                )}
-              </div>
-            );
-          })}
+          {form.ingredients.map((ing, i) => (
+            <div key={i} className="flex gap-2 items-center">
+              <input
+                type="text"
+                value={ing.name}
+                onChange={(e) => updateIngredient(i, 'name', e.target.value)}
+                placeholder="Ingredient name"
+                className="flex-1 px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+              <input
+                type="text"
+                value={ing.quantity}
+                onChange={(e) => updateIngredient(i, 'quantity', e.target.value)}
+                placeholder="Qty"
+                className="w-20 px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+              <input
+                type="text"
+                value={ing.unit}
+                onChange={(e) => updateIngredient(i, 'unit', e.target.value)}
+                placeholder="Unit"
+                className="w-20 px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+              {form.ingredients.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeIngredient(i)}
+                  className="p-2 text-muted-foreground hover:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          ))}
         </div>
       </div>
 

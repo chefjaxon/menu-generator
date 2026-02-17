@@ -43,31 +43,6 @@ export function initializeSchema(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_recipe_tags_recipe ON recipe_tags(recipe_id);
     CREATE INDEX IF NOT EXISTS idx_recipe_tags_tag ON recipe_tags(tag);
 
-    CREATE TABLE IF NOT EXISTS recipe_ingredient_mods (
-      id            TEXT PRIMARY KEY,
-      recipe_id     TEXT NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
-      ingredient_idx INTEGER NOT NULL,
-      mod_type      TEXT NOT NULL CHECK(mod_type IN ('omit', 'swap')),
-      swap_option   TEXT
-    );
-
-    CREATE INDEX IF NOT EXISTS idx_recipe_ingredient_mods_recipe ON recipe_ingredient_mods(recipe_id);
-
-    CREATE TABLE IF NOT EXISTS protein_groups (
-      id         TEXT PRIMARY KEY,
-      name       TEXT NOT NULL UNIQUE,
-      sort_order INTEGER NOT NULL DEFAULT 0
-    );
-
-    CREATE TABLE IF NOT EXISTS protein_group_members (
-      id         TEXT PRIMARY KEY,
-      group_id   TEXT NOT NULL REFERENCES protein_groups(id) ON DELETE CASCADE,
-      protein    TEXT NOT NULL
-    );
-
-    CREATE INDEX IF NOT EXISTS idx_protein_group_members_group ON protein_group_members(group_id);
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_protein_group_member_unique ON protein_group_members(group_id, protein);
-
     CREATE TABLE IF NOT EXISTS clients (
       id              TEXT PRIMARY KEY,
       name            TEXT NOT NULL,
@@ -166,18 +141,6 @@ export function initializeSchema(db: Database.Database): void {
     const insert = db.prepare('INSERT INTO proteins (id, name, sort_order) VALUES (?, ?, ?)');
     for (let i = 0; i < defaults.length; i++) {
       insert.run(`protein_${defaults[i]}`, defaults[i], i);
-    }
-  }
-
-  // Seed default protein groups if table is empty
-  const groupCount = db.prepare('SELECT COUNT(*) as cnt FROM protein_groups').get() as { cnt: number };
-  if (groupCount.cnt === 0) {
-    const seafoodId = 'group_seafood';
-    db.prepare('INSERT INTO protein_groups (id, name, sort_order) VALUES (?, ?, ?)').run(seafoodId, 'seafood', 0);
-    const seafoodMembers = ['salmon', 'cod', 'trout', 'shrimp'];
-    const insertMember = db.prepare('INSERT INTO protein_group_members (id, group_id, protein) VALUES (?, ?, ?)');
-    for (const member of seafoodMembers) {
-      insertMember.run(`pgm_${member}`, seafoodId, member);
     }
   }
 
