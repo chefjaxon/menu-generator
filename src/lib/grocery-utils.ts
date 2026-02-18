@@ -228,7 +228,8 @@ const PREP_ADJECTIVE_PATTERN =
  * "garlic clove, thinly sliced" and "fresh basil" normalize to "garlic clove"
  * and "basil" respectively before the alias table lookup.
  *
- * Two-pass approach:
+ * Three-pass approach:
+ *   0. Strip parenthetical content: "salt (to taste)" → "salt"
  *   1. Strip comma-suffix: "garlic clove, thinly sliced" → "garlic clove"
  *   2. Strip standalone prep words: "thinly sliced garlic" → "garlic"
  *
@@ -238,8 +239,12 @@ const PREP_ADJECTIVE_PATTERN =
  * Pure function with no side effects.
  */
 export function stripPreparationDescriptors(name: string): string {
+  // Pass 0 — strip parenthetical content: "salt (to taste)" → "salt",
+  // "garlic (about 4)" → "garlic", "olive oil (extra virgin)" → "olive oil"
+  const withoutParens = name.replace(/\s*\([^)]*\)/g, '').trim();
+
   // Pass 1 — drop everything after the first comma (the most common Recipe Keeper pattern)
-  const beforeComma = name.split(',')[0].trim();
+  const beforeComma = withoutParens.split(',')[0].trim();
 
   // Pass 2 — strip standalone prep verbs and adjectives
   const stripped = beforeComma

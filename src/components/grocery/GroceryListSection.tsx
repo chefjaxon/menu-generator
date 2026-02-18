@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Trash2, RefreshCw, GitMerge, X } from 'lucide-react';
+import { Trash2, RefreshCw, GitMerge, X, Copy } from 'lucide-react';
 import type { GroceryItem, DuplicatePair } from '@/lib/types';
 
 interface EditableRowProps {
@@ -192,6 +192,18 @@ export function GroceryListSection({
 }: Props) {
   const [dismissedPairs, setDismissedPairs] = useState<Set<string>>(new Set());
   const [mergingPairKey, setMergingPairKey] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  function handleCopy() {
+    const unchecked = items.filter((i) => !i.checked);
+    const lines = unchecked.map((item) => {
+      const parts = [item.quantity, item.unit, item.name].filter(Boolean);
+      return parts.join(' ');
+    });
+    navigator.clipboard.writeText(lines.join('\n'));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
 
   function pairKey(pair: DuplicatePair) {
     return `${pair.itemA.id}|${pair.itemB.id}`;
@@ -227,14 +239,25 @@ export function GroceryListSection({
             </p>
           )}
         </div>
-        <button
-          onClick={onGenerate}
-          disabled={generating}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-foreground text-background text-sm font-medium rounded hover:opacity-90 disabled:opacity-50"
-        >
-          <RefreshCw className={`h-4 w-4 ${generating ? 'animate-spin' : ''}`} />
-          {generating ? 'Generating...' : 'Generate from Selections'}
-        </button>
+        <div className="flex items-center gap-2">
+          {items.length > 0 && (
+            <button
+              onClick={handleCopy}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded border border-border hover:bg-muted transition-colors"
+            >
+              <Copy className="h-4 w-4" />
+              {copied ? 'Copied!' : 'Copy for Notes'}
+            </button>
+          )}
+          <button
+            onClick={onGenerate}
+            disabled={generating}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-foreground text-background text-sm font-medium rounded hover:opacity-90 disabled:opacity-50"
+          >
+            <RefreshCw className={`h-4 w-4 ${generating ? 'animate-spin' : ''}`} />
+            {generating ? 'Generating...' : 'Generate from Selections'}
+          </button>
+        </div>
       </div>
 
       {items.length === 0 ? (
