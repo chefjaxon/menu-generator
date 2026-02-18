@@ -73,12 +73,36 @@ export function parsePastedText(text: string): ParsedIngredientLine[] {
 /**
  * Parse a quantity string into a decimal number.
  * Handles integers ("3"), decimals ("1.5"), simple fractions ("1/2", "3/4"),
- * and mixed numbers ("1 1/2", "2 3/4").
+ * mixed numbers ("1 1/2", "2 3/4"), and unicode fraction strings produced by
+ * formatQuantity ("½", "1½", "2¾", etc.).
  * Returns null if unparseable.
  */
 function parseQuantity(qty: string): number | null {
   if (!qty) return null;
   const trimmed = qty.trim();
+
+  // Unicode fractions (produced by formatQuantity — handles intermediate combine results)
+  // e.g. "½", "1½", "2¾" — must be checked before parseFloat since parseFloat("1½") = 1 (truncates)
+  const UNICODE: Record<string, number> = {
+    '⅛': 1/8, '¼': 1/4, '⅓': 1/3, '⅜': 3/8,
+    '½': 1/2, '⅝': 5/8, '⅔': 2/3, '¾': 3/4, '⅞': 7/8,
+  };
+  const hasUnicode = /[⅛¼⅓⅜½⅝⅔¾⅞]/.test(trimmed);
+  if (hasUnicode) {
+    let value = 0;
+    let rest = trimmed;
+    // Strip optional leading whole number
+    const wholeMatch = rest.match(/^(\d+)/);
+    if (wholeMatch) {
+      value += parseInt(wholeMatch[1], 10);
+      rest = rest.slice(wholeMatch[0].length);
+    }
+    if (rest && UNICODE[rest] !== undefined) {
+      value += UNICODE[rest];
+      return value;
+    }
+    return null; // unrecognised unicode combo
+  }
 
   // Mixed number: "1 1/2", "2 3/4"
   const mixed = trimmed.match(/^(\d+)\s+(\d+)\/(\d+)$/);
