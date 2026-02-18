@@ -336,5 +336,314 @@ export const INGREDIENT_ALIASES: Map<string, string> = new Map([
   ['evaporated milk', 'evaporated milk'],
   ['buttermilk', 'buttermilk'],
   ['cream of tartar', 'cream of tartar'],
+
+  // ── From Recipe Keeper import (your 1,286 recipe database) ───────────────
+
+  // ── Cilantro ─────────────────────────────────────────────────────────────
+  ['chopped cilantro', 'cilantro'],
+  ['chopped fresh cilantro', 'cilantro'],
+  ['fresh cilantro', 'cilantro'],
+  ['fresh cilantro leaves', 'cilantro'],
+
+  // ── Parsley ──────────────────────────────────────────────────────────────
+  ['chopped flat-leaf parsley', 'parsley'],
+  ['chopped fresh parsley', 'parsley'],
+  ['chopped parsley', 'parsley'],
+  ['fresh parsley for serving', 'parsley'],
+  ['fresh parsley leaves', 'parsley'],
+
+  // ── Rosemary ─────────────────────────────────────────────────────────────
+  ['chopped fresh rosemary', 'rosemary'],
+  ['finely chopped fresh rosemary leaves', 'rosemary'],
+  ['fresh rosemary leaves', 'rosemary'],
+  ['fresh rosemary sprigs', 'rosemary'],
+
+  // ── Oregano ──────────────────────────────────────────────────────────────
+  ['chopped oregano leaves', 'oregano'],
+  ['fresh oregano', 'oregano'],
+  ['fresh oregano leaves', 'oregano'],
+
+  // ── Thyme ────────────────────────────────────────────────────────────────
+  ['chopped thyme leaves', 'thyme'],
+  ['fresh thyme leaves', 'thyme'],
+
+  // ── Dill ─────────────────────────────────────────────────────────────────
+  ['dill - finely chopped', 'dill'],
+  ['finely chopped fresh dill', 'dill'],
+  ['fresh dill fronds', 'dill'],
+
+  // ── Basil ────────────────────────────────────────────────────────────────
+  ['fresh basil leaves', 'basil'],
+
+  // ── Chives ───────────────────────────────────────────────────────────────
+  ['fresh chives', 'chives'],
+
+  // ── Fresh ginger ─────────────────────────────────────────────────────────
+  ['fresh ginger', 'fresh ginger'],
+  ['freshly grated ginger', 'fresh ginger'],
+  ['grated fresh ginger', 'fresh ginger'],
+  ['grated ginger', 'fresh ginger'],
+
+  // ── Garlic (additional variants) ─────────────────────────────────────────
+  ['garlic clove - grated or minced', 'garlic'],
+  ['large garlic clove', 'garlic'],
+  ['large garlic cloves', 'garlic'],
+  ['roasted garlic cloves', 'garlic'],
+  ['small garlic clove', 'garlic'],
+  ['whole head garlic', 'garlic'],
+
+  // ── Onion (additional variants) ──────────────────────────────────────────
+  ['medium yellow onion', 'onion'],
+  ['small yellow onion', 'onion'],
+  ['yellow onion', 'onion'],
+
+  // ── Red onion (additional variants) ──────────────────────────────────────
+  ['small red onion', 'red onion'],
+  ['small red onion - finely chopped', 'red onion'],
+
+  // ── Scallion (additional variants) ───────────────────────────────────────
+  ['thinly sliced scallions', 'green onion'],
+  ['scallions', 'green onion'],
+
+  // ── Carrot ───────────────────────────────────────────────────────────────
+  ['carrot', 'carrot'],
+  ['carrots', 'carrot'],
+  ['large carrot', 'carrot'],
+  ['large carrots', 'carrot'],
+  ['medium carrot', 'carrot'],
+
+  // ── Celery ───────────────────────────────────────────────────────────────
+  ['celery', 'celery'],
+  ['celery stalks', 'celery'],
+
+  // ── Zucchini ─────────────────────────────────────────────────────────────
+  ['zucchini', 'zucchini'],
+  ['diced zucchini', 'zucchini'],
+  ['large zucchini', 'zucchini'],
+  ['medium zucchini', 'zucchini'],
+  ['small zucchini', 'zucchini'],
+
+  // ── Spinach ──────────────────────────────────────────────────────────────
+  ['baby spinach', 'spinach'],
+  ['fresh spinach', 'spinach'],
+  ['spinach', 'spinach'],
+
+  // ── Cauliflower ──────────────────────────────────────────────────────────
+  ['cauliflower', 'cauliflower'],
+  ['large head cauliflower', 'cauliflower'],
+  ['medium head cauliflower', 'cauliflower'],
+
+  // ── Sweet potato (additional variants) ───────────────────────────────────
+  ['large sweet potatoes', 'sweet potato'],
+  ['sweet potatoes', 'sweet potato'],
+  ['sweet potato', 'sweet potato'],
+
+  // ── Mushroom ─────────────────────────────────────────────────────────────
+  ['mushroom', 'mushroom'],
+  ['cremini mushrooms', 'mushroom'],
+  ['mushrooms quartered', 'mushroom'],
+  ['sliced mushrooms', 'mushroom'],
+
+  // ── Cherry tomato (additional variants) ──────────────────────────────────
+  ['cherry tomatoes', 'cherry tomato'],
+
+  // ── Diced tomato (additional variants) ───────────────────────────────────
+  ['canned diced tomatoes', 'diced tomato'],
+
+  // ── Whole peeled tomato ───────────────────────────────────────────────────
+  ['whole peeled tomato', 'whole peeled tomato'],
+  ['can san marzano whole peeled tomatoes', 'whole peeled tomato'],
+  ['can whole peeled tomatoes', 'whole peeled tomato'],
+
+  // ── Red bell pepper (additional variants) ────────────────────────────────
+  ['medium red bell pepper', 'red bell pepper'],
+  ['red bell pepper - finely chopped', 'red bell pepper'],
+
+  // ── Sweet corn ───────────────────────────────────────────────────────────
+  ['sweet corn', 'sweet corn'],
+  ['can of sweet corn', 'sweet corn'],
+  ['sweet corn kernels', 'sweet corn'],
+
+  // ── Apple ────────────────────────────────────────────────────────────────
+  ['apple', 'apple'],
+  ['large honeycrisp apples', 'apple'],
+
+  // ── Jalapeño ─────────────────────────────────────────────────────────────
+  ['jalapeño', 'jalapeño'],
+  ['jalapeños', 'jalapeño'],
+
+  // ── Shrimp ───────────────────────────────────────────────────────────────
+  ['shrimp', 'shrimp'],
+  ['large shrimp', 'shrimp'],
+  ['shrimp with shells', 'shrimp'],
+
+  // ── Egg (additional variants) ─────────────────────────────────────────────
+  ['large eggs', 'egg'],
+
+  // ── Salt (additional variants) ────────────────────────────────────────────
+  ['flaky sea salt', 'salt'],
+  ['smoked sea salt', 'salt'],
+  ['salt to taste', 'salt'],
+
+  // ── Black pepper (additional variants) ───────────────────────────────────
+  ['black pepper', 'pepper'],
+  ['black pepper to taste', 'pepper'],
+  ['freshly cracked black pepper', 'pepper'],
+  ['freshly cracked black pepper to taste', 'pepper'],
+
+  // ── Salt and pepper combos ────────────────────────────────────────────────
+  ['salt & pepper', 'salt and pepper'],
+  ['salt + pepper to taste', 'salt and pepper'],
+  ['salt and black pepper', 'salt and pepper'],
+  ['salt and pepper to taste', 'salt and pepper'],
+  ['salt to taste', 'salt'],
+  ['kosher salt and black pepper', 'salt and pepper'],
+  ['sea salt & freshly ground black pepper', 'salt and pepper'],
+
+  // ── Butter (additional variants) ──────────────────────────────────────────
+
+  // ── Olive oil (additional variants) ──────────────────────────────────────
+  ['extra-virgin olive oil', 'olive oil'],
+
+  // ── Sesame oil (additional variants) ─────────────────────────────────────
+  ['toasted sesame oil', 'sesame oil'],
+
+  // ── Sesame seeds ─────────────────────────────────────────────────────────
+  ['sesame seeds', 'sesame seeds'],
+  ['toasted sesame seeds', 'sesame seeds'],
+
+  // ── Coconut milk (additional variants) ───────────────────────────────────
+  ['canned full fat coconut milk', 'coconut milk'],
+  ['full-fat coconut milk', 'coconut milk'],
+
+  // ── Greek yogurt ─────────────────────────────────────────────────────────
+  ['greek yogurt', 'greek yogurt'],
+  ['full-fat greek yogurt', 'greek yogurt'],
+  ['full-fat plain greek yogurt', 'greek yogurt'],
+  ['whole-milk greek yogurt', 'greek yogurt'],
+
+  // ── Milk (additional variants) ────────────────────────────────────────────
+  ['whole milk', 'milk'],
+
+  // ── Ricotta ──────────────────────────────────────────────────────────────
+  ['ricotta', 'ricotta'],
+  ['whole-milk ricotta', 'ricotta'],
+  ['whole-milk ricotta cheese', 'ricotta'],
+
+  // ── Parmesan (additional variants) ───────────────────────────────────────
+  ['freshly grated parmesan or pecorino', 'parmesan'],
+  ['freshly grated parmigiano-reggiano', 'parmesan'],
+  ['grated parmesan cheese', 'parmesan'],
+
+  // ── Mozzarella (additional variants) ─────────────────────────────────────
+  ['shredded mozzarella cheese', 'mozzarella'],
+
+  // ── Feta (additional variants) ────────────────────────────────────────────
+  ['feta cheese', 'feta'],
+
+  // ── Chicken broth (additional variants) ──────────────────────────────────
+  ['chicken stock', 'chicken broth'],
+
+  // ── Soy sauce (additional variants) ──────────────────────────────────────
+  ['low-sodium soy sauce', 'soy sauce'],
+
+  // ── Dijon mustard (additional variants) ──────────────────────────────────
+  ['whole-grain dijon mustard', 'dijon mustard'],
+
+  // ── Lemon juice (additional variants) ─────────────────────────────────────
+  ['fresh lemon juice', 'lemon juice'],
+
+  // ── Lemon zest ────────────────────────────────────────────────────────────
+  ['lemon zest', 'lemon zest'],
+  ['fresh lemon zest', 'lemon zest'],
+  ['finely grated lemon zest', 'lemon zest'],
+
+  // ── Lemon (the fruit) ────────────────────────────────────────────────────
+  ['lemons', 'lemon'],
+
+  // ── Lime juice (additional variants) ──────────────────────────────────────
+  ['fresh lime juice', 'lime juice'],
+
+  // ── Lime zest ────────────────────────────────────────────────────────────
+  ['lime zest', 'lime zest'],
+
+  // ── Lime (the fruit) ──────────────────────────────────────────────────────
+  ['lime', 'lime'],
+  ['lime wedges', 'lime'],
+  ['limes', 'lime'],
+
+  // ── Orange juice ──────────────────────────────────────────────────────────
+  ['orange juice', 'orange juice'],
+  ['fresh orange juice', 'orange juice'],
+
+  // ── Honey (additional variants) ───────────────────────────────────────────
+  ['raw honey', 'honey'],
+
+  // ── Maple syrup (additional variants) ────────────────────────────────────
+  ['pure maple syrup', 'maple syrup'],
+
+  // ── Paprika (additional variants) ─────────────────────────────────────────
+  ['sweet paprika', 'paprika'],
+
+  // ── Smoked paprika (additional variants) ──────────────────────────────────
+  ['spanish smoked paprika', 'smoked paprika'],
+
+  // ── Cumin (additional variants) ───────────────────────────────────────────
+  ['ground cumin', 'cumin'],
+
+  // ── Coriander (additional variants) ───────────────────────────────────────
+  ['coriander', 'coriander'],
+  ['ground coriander', 'coriander'],
+
+  // ── Cinnamon (additional variants) ────────────────────────────────────────
+  ['cinnamon', 'cinnamon'],
+  ['ground cinnamon', 'cinnamon'],
+
+  // ── Turmeric (additional variants) ────────────────────────────────────────
+  ['turmeric', 'turmeric'],
+  ['turmeric powder', 'turmeric'],
+
+  // ── Nutmeg ────────────────────────────────────────────────────────────────
+  ['nutmeg', 'nutmeg'],
+  ['ground nutmeg', 'nutmeg'],
+
+  // ── Red pepper flakes (additional variants) ───────────────────────────────
+  ['chili flakes', 'red pepper flakes'],
+
+  // ── Bay leaf (additional variants) ────────────────────────────────────────
+  ['bay leaves', 'bay leaf'],
+
+  // ── Jasmine rice (additional variants) ────────────────────────────────────
+  ['dry jasmine rice', 'jasmine rice'],
+
+  // ── Basmati rice (additional variants) ────────────────────────────────────
+  ['dry basmati rice', 'basmati rice'],
+
+  // ── Brown rice (additional variants) ──────────────────────────────────────
+  ['dry brown rice', 'brown rice'],
+
+  // ── White bean ────────────────────────────────────────────────────────────
+  ['white bean', 'white bean'],
+  ['white beans', 'white bean'],
+  ['white beans - drained', 'white bean'],
+  ['can cannellini beans', 'white bean'],
+
+  // ── Black bean ────────────────────────────────────────────────────────────
+  ['black bean', 'black bean'],
+  ['black beans', 'black bean'],
+  ['can black beans', 'black bean'],
+
+  // ── Chickpea ──────────────────────────────────────────────────────────────
+  ['chickpea', 'chickpea'],
+  ['chickpeas', 'chickpea'],
+  ['cans chickpeas', 'chickpea'],
+
+  // ── Chipotle in adobo ─────────────────────────────────────────────────────
+  ['chipotle pepper in adobo', 'chipotle pepper in adobo'],
+  ['chipotle peppers in adobo sauce', 'chipotle pepper in adobo'],
+  ['1–2 chipotle peppers in adobo sauce', 'chipotle pepper in adobo'],
+
+  // ── Vegetable broth (additional variants) ─────────────────────────────────
+  ['vegetable stock', 'vegetable broth'],
 ]);
 
