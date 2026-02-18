@@ -31,4 +31,4 @@ COPY --from=base /app/next.config.mjs ./next.config.mjs
 
 EXPOSE 3000
 
-CMD sh -c "npx prisma migrate deploy && npx prisma db seed && npm run start"
+CMD sh -c "npx prisma migrate deploy --url \"$DATABASE_URL\" && npx prisma db seed && npm run start"
