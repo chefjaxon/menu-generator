@@ -61,3 +61,42 @@ export const finalizeMenuSchema = z.object({
   menuId: z.string().min(1),
   weekLabel: z.string().optional(),
 });
+
+// --- Grocery feature validations ---
+
+export const toggleClientSelectedSchema = z.object({
+  menuItemId: z.string().min(1),
+  selected: z.boolean(),
+});
+
+export const groceryItemCreateSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(500),
+  quantity: z.string().max(100).optional().nullable(),
+  unit: z.string().max(50).optional().nullable(),
+  source: z.enum(['recipe', 'manual']),
+  recipeItemId: z.string().optional().nullable(),
+  notes: z.string().max(1000).optional().nullable(),
+  sortOrder: z.number().int().optional(),
+});
+
+export const groceryItemUpdateSchema = z.object({
+  name: z.string().min(1).max(500).optional(),
+  quantity: z.string().max(100).nullable().optional(),
+  unit: z.string().max(50).nullable().optional(),
+  checked: z.boolean().optional(),
+  notes: z.string().max(1000).nullable().optional(),
+  sortOrder: z.number().int().optional(),
+});
+
+export const groceryMergeSchema = z.object({
+  keepId: z.string().min(1),
+  deleteId: z.string().min(1),
+  name: z.string().min(1).max(500),
+  quantity: z.string().max(100).nullable().optional(),
+  unit: z.string().max(50).nullable().optional(),
+  notes: z.string().max(1000).nullable().optional(),
+});
+
+export const parsePasteSchema = z.object({
+  text: z.string().max(50000),
+});

@@ -130,8 +130,9 @@ model Menu {
   finalized Boolean  @default(false)
   weekLabel String?  @map("week_label")
 
-  client Client     @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  items  MenuItem[]
+  client       Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  items        MenuItem[]
+  groceryItems GroceryItem[]
 
   @@map("menus")
 }
@@ -142,6 +143,7 @@ model MenuItem {
   recipeId        String  @map("recipe_id")
   selectedProtein String? @map("selected_protein")
   sortOrder       Int     @map("sort_order") @default(0)
+  clientSelected  Boolean @default(false) @map("client_selected")
 
   menu   Menu   @relation(fields: [menuId], references: [id], onDelete: Cascade)
   recipe Recipe @relation(fields: [recipeId], references: [id])
@@ -178,4 +180,22 @@ model Protein {
   sortOrder Int    @map("sort_order") @default(0)
 
   @@map("proteins")
+}
+
+model GroceryItem {
+  id           String   @id
+  menuId       String   @map("menu_id")
+  name         String
+  quantity     String?
+  unit         String?
+  checked      Boolean  @default(false)
+  source       String   @default("recipe")
+  recipeItemId String?  @map("recipe_item_id")
+  notes        String?
+  sortOrder    Int      @map("sort_order") @default(0)
+  createdAt    DateTime @map("created_at") @default(now())
+
+  menu Menu @relation(fields: [menuId], references: [id], onDelete: Cascade)
+
+  @@map("grocery_items")
 }

@@ -16,6 +16,7 @@ function mapMenu(row: {
     recipeId: string;
     selectedProtein: string | null;
     sortOrder: number;
+    clientSelected: boolean;
   }>;
 }, includeRecipes = false, recipes: Record<string, Awaited<ReturnType<typeof getRecipeById>>> = {}): Menu {
   const items: MenuItem[] = row.items.map((ir) => ({
@@ -24,6 +25,7 @@ function mapMenu(row: {
     recipeId: ir.recipeId,
     selectedProtein: ir.selectedProtein,
     sortOrder: ir.sortOrder,
+    clientSelected: ir.clientSelected,
     recipe: includeRecipes ? (recipes[ir.recipeId] || undefined) : undefined,
   }));
 
@@ -159,6 +161,18 @@ export async function updateMenuItem(menuItemId: string, recipeId: string, selec
 export async function deleteMenu(id: string): Promise<boolean> {
   try {
     await prisma.menu.delete({ where: { id } });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function setMenuItemSelected(menuItemId: string, selected: boolean): Promise<boolean> {
+  try {
+    await prisma.menuItem.update({
+      where: { id: menuItemId },
+      data: { clientSelected: selected },
+    });
     return true;
   } catch {
     return false;

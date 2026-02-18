@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, Calendar, User, ChefHat, UtensilsCrossed, Cookie } from 'lucide-react';
+import { ArrowLeft, Calendar, User, ChefHat, UtensilsCrossed, Cookie, ShoppingCart } from 'lucide-react';
 import { getMenuById } from '@/lib/queries/menus';
 import { formatLabel } from '@/lib/utils';
 
@@ -53,11 +53,20 @@ export default async function MenuDetailPage({
             </span>
           </div>
         </div>
-        {!menu.finalized && (
-          <span className="px-2.5 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded">
-            Draft
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/menus/${menu.id}/grocery`}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-md text-sm hover:bg-muted"
+          >
+            <ShoppingCart className="h-4 w-4" />
+            Grocery List
+          </Link>
+          {!menu.finalized && (
+            <span className="px-2.5 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded">
+              Draft
+            </span>
+          )}
+        </div>
       </div>
 
       {meals.length > 0 && (

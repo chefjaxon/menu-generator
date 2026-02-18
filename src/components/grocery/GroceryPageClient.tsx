@@ -1,0 +1,153 @@
+'use client';
+
+import { useState } from 'react';
+import type { Menu, GroceryItem } from '@/lib/types';
+import { findDuplicatePairs } from '@/lib/grocery-utils';
+import { ClientSelectionSection } from './ClientSelectionSection';
+import { GroceryListSection } from './GroceryListSection';
+import { PastePanelSection } from './PastePanelSection';
+
+interface Props {
+  menu: Menu;
+  initialGroceryItems: GroceryItem[];
+}
+
+export function GroceryPageClient({ menu, initialGroceryItems }: Props) {
+  const [menuItems, setMenuItems] = useState(menu.items);
+  const [groceryItems, setGroceryItems] = useState<GroceryItem[]>(initialGroceryItems);
+  const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState('');
+
+  const duplicatePairs = findDuplicatePairs(groceryItems);
+
+  async function handleToggleSelected(menuItemId: string, selected: boolean) {
+    // Optimistic update
+    setMenuItems((prev) =>
+      prev.map((i) => (i.id === menuItemId ? { ...i, clientSelected: selected } : i))
+    );
+    const res = await fetch(`/api/menus/${menu.id}/items`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ menuItemId, selected }),
+    });
+    if (!res.ok) {
+      // Revert on failure
+      setMenuItems((prev) =>
+        prev.map((i) => (i.id === menuItemId ? { ...i, clientSelected: !selected } : i))
+      );
+    }
+  }
+
+  async function handleGenerate() {
+    setGenerating(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/menus/${menu.id}/grocery/generate`, {
+        method: 'POST',
+      });
+      if (!res.ok) throw new Error('Generate failed');
+      const items: GroceryItem[] = await res.json();
+      setGroceryItems(items);
+    } catch {
+      setError('Failed to generate grocery list. Please try again.');
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  async function handleUpdateItem(itemId: string, data: Partial<GroceryItem>) {
+    const res = await fetch(`/api/menus/${menu.id}/grocery/${itemId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (res.ok) {
+      const updated: GroceryItem = await res.json();
+      setGroceryItems((prev) =>
+        prev.map((i) => (i.id === itemId ? updated : i))
+      );
+    }
+  }
+
+  async function handleDeleteItem(itemId: string) {
+    const res = await fetch(`/api/menus/${menu.id}/grocery/${itemId}`, {
+      method: 'DELETE',
+    });
+    if (res.ok) {
+      setGroceryItems((prev) => prev.filter((i) => i.id !== itemId));
+    }
+  }
+
+  async function handleMerge(
+    keepId: string,
+    deleteId: string,
+    mergedData: {
+      name: string;
+      quantity: string | null;
+      unit: string | null;
+      notes: string | null;
+    }
+  ) {
+    const res = await fetch(`/api/menus/${menu.id}/grocery/merge`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ keepId, deleteId, ...mergedData }),
+    });
+    if (res.ok) {
+      const updated: GroceryItem = await res.json();
+      setGroceryItems((prev) =>
+        prev
+          .filter((i) => i.id !== deleteId)
+          .map((i) => (i.id === keepId ? updated : i))
+      );
+    }
+  }
+
+  async function handleAddParsedItems(
+    parsed: Array<{ name: string; quantity: string | null; unit: string | null }>
+  ) {
+    const results: GroceryItem[] = [];
+    for (const p of parsed) {
+      const res = await fetch(`/api/menus/${menu.id}/grocery`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...p, source: 'manual' }),
+      });
+      if (res.ok) {
+        results.push(await res.json());
+      }
+    }
+    setGroceryItems((prev) => [...prev, ...results]);
+  }
+
+  return (
+    <div className="space-y-8">
+      {error && (
+        <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">
+          {error}
+        </div>
+      )}
+
+      <ClientSelectionSection
+        menuItems={menuItems}
+        onToggle={handleToggleSelected}
+      />
+
+      <GroceryListSection
+        menuId={menu.id}
+        items={groceryItems}
+        duplicatePairs={duplicatePairs}
+        generating={generating}
+        onGenerate={handleGenerate}
+        onUpdate={handleUpdateItem}
+        onDelete={handleDeleteItem}
+        onMerge={handleMerge}
+      />
+
+      <PastePanelSection
+        menuId={menu.id}
+        onAdd={handleAddParsedItems}
+      />
+    </div>
+  );
+}

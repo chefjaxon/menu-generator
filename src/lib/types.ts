@@ -66,7 +66,30 @@ export interface MenuItem {
   recipeId: string;
   selectedProtein: string | null;
   sortOrder: number;
+  clientSelected: boolean;
   recipe?: Recipe;
+}
+
+export type GrocerySource = 'recipe' | 'manual';
+
+export interface GroceryItem {
+  id: string;
+  menuId: string;
+  name: string;
+  quantity: string | null;
+  unit: string | null;
+  checked: boolean;
+  source: GrocerySource;
+  recipeItemId: string | null;
+  notes: string | null;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export interface DuplicatePair {
+  itemA: GroceryItem;
+  itemB: GroceryItem;
+  similarity: number;
 }
 
 export interface Menu {
