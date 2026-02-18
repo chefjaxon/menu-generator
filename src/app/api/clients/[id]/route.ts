@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { getClientById, updateClient, deleteClient } from '@/lib/queries/clients';
 import { clientCreateSchema } from '@/lib/validations';

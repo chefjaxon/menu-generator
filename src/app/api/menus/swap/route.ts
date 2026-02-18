@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { getSwapSuggestions } from '@/lib/menu-engine';
 import { updateMenuItem } from '@/lib/queries/menus';

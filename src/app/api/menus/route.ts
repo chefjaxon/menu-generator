@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllMenus, finalizeMenu } from '@/lib/queries/menus';
 import { finalizeMenuSchema } from '@/lib/validations';

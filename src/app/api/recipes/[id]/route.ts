@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { getRecipeById, updateRecipe, deleteRecipe } from '@/lib/queries/recipes';
 import { recipeCreateSchema } from '@/lib/validations';
