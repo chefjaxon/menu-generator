@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Trash2, Plus } from 'lucide-react';
+import { Trash2, Plus, Eraser } from 'lucide-react';
 import { formatLabel } from '@/lib/utils';
 
 export default function SettingsPage() {
@@ -95,6 +95,28 @@ export default function SettingsPage() {
     }
   }
 
+  async function handleForceDelete(name: string) {
+    setError('');
+    setSuccess('');
+
+    try {
+      const res = await fetch(`/api/proteins/${encodeURIComponent(name)}?force=true`, {
+        method: 'DELETE',
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error || 'Failed to delete protein');
+        return;
+      }
+
+      setSuccess(`Removed "${formatLabel(name)}" and cleared all references`);
+      await fetchProteins();
+    } catch {
+      setError('Failed to delete protein');
+    }
+  }
+
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -118,7 +140,7 @@ export default function SettingsPage() {
       <div className="max-w-xl">
         <h2 className="text-lg font-semibold mb-1">Manage Proteins</h2>
         <p className="text-sm text-muted-foreground mb-4">
-          Add or remove protein types. Proteins in use by clients or recipes cannot be deleted.
+          Add or remove protein types. Use the eraser icon to force-delete a protein and remove all its references.
         </p>
 
         {error && (
@@ -169,14 +191,25 @@ export default function SettingsPage() {
                     </span>
                   )}
                 </div>
-                <button
-                  onClick={() => handleDelete(p)}
-                  disabled={inUse}
-                  className="p-1.5 text-muted-foreground hover:text-destructive disabled:opacity-30 disabled:hover:text-muted-foreground transition-colors"
-                  title={inUse ? `Cannot delete: used by ${usage} client(s)/recipe(s)` : `Delete ${formatLabel(p)}`}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                <div className="flex items-center gap-1">
+                  {inUse && (
+                    <button
+                      onClick={() => handleForceDelete(p)}
+                      className="p-1.5 text-muted-foreground hover:text-orange-600 transition-colors"
+                      title={`Force delete: removes from all clients and recipes (${usage} use${usage === 1 ? '' : 's'})`}
+                    >
+                      <Eraser className="h-4 w-4" />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleDelete(p)}
+                    disabled={inUse}
+                    className="p-1.5 text-muted-foreground hover:text-destructive disabled:opacity-30 disabled:hover:text-muted-foreground transition-colors"
+                    title={inUse ? `Cannot delete: used by ${usage} client(s)/recipe(s)` : `Delete ${formatLabel(p)}`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
             );
           })}

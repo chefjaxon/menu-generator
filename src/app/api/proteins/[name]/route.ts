@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { removeProtein, getProteinUsageCount } from '@/lib/queries/proteins';
+import { removeProtein, forceRemoveProtein, getProteinUsageCount } from '@/lib/queries/proteins';
 
 export async function GET(
   _request: NextRequest,
@@ -12,11 +12,20 @@ export async function GET(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ name: string }> }
 ) {
   const { name } = await params;
   const decoded = decodeURIComponent(name);
+  const force = request.nextUrl.searchParams.get('force') === 'true';
+
+  if (force) {
+    const deleted = await forceRemoveProtein(decoded);
+    if (!deleted) {
+      return NextResponse.json({ error: 'Protein not found' }, { status: 404 });
+    }
+    return NextResponse.json({ success: true });
+  }
 
   const usage = await getProteinUsageCount(decoded);
   if (usage > 0) {

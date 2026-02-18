@@ -22,10 +22,35 @@ export async function addProtein(name: string): Promise<void> {
 }
 
 export async function removeProtein(name: string): Promise<boolean> {
-  const usage = await getProteinUsageCount(name);
-  if (usage > 0) return false;
+  const [clientCount, recipeCount] = await Promise.all([
+    prisma.clientProtein.count({ where: { protein: name } }),
+    prisma.recipeProteinSwap.count({ where: { protein: name } }),
+  ]);
+  if (clientCount + recipeCount > 0) return false;
   try {
+    // Clear any menu item selections referencing this protein before deleting
+    await prisma.menuItem.updateMany({
+      where: { selectedProtein: name },
+      data: { selectedProtein: null },
+    });
     await prisma.protein.delete({ where: { name } });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function forceRemoveProtein(name: string): Promise<boolean> {
+  try {
+    await prisma.$transaction([
+      prisma.clientProtein.deleteMany({ where: { protein: name } }),
+      prisma.recipeProteinSwap.deleteMany({ where: { protein: name } }),
+      prisma.menuItem.updateMany({
+        where: { selectedProtein: name },
+        data: { selectedProtein: null },
+      }),
+      prisma.protein.delete({ where: { name } }),
+    ]);
     return true;
   } catch {
     return false;
