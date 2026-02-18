@@ -181,3 +181,40 @@ export async function generateGroceryItemsFromMenu(menuId: string): Promise<Groc
 
   return getGroceryItemsForMenu(menuId);
 }
+
+export interface GroceryListSummary {
+  menuId: string;
+  clientName: string;
+  weekLabel: string | null;
+  createdAt: string;
+  totalItems: number;
+  checkedItems: number;
+  selectedCount: number;
+}
+
+/**
+ * Fetch a summary of all finalized menus with grocery data for the index page.
+ * Returns all finalized menus ordered by most recently created,
+ * with grocery item counts and client selection counts.
+ */
+export async function getAllGroceryListSummaries(): Promise<GroceryListSummary[]> {
+  const menus = await prisma.menu.findMany({
+    where: { finalized: true },
+    orderBy: { createdAt: 'desc' },
+    include: {
+      client: { select: { name: true } },
+      groceryItems: { select: { checked: true } },
+      items: { select: { clientSelected: true } },
+    },
+  });
+
+  return menus.map((m) => ({
+    menuId: m.id,
+    clientName: m.client.name,
+    weekLabel: m.weekLabel,
+    createdAt: m.createdAt.toISOString(),
+    totalItems: m.groceryItems.length,
+    checkedItems: m.groceryItems.filter((g) => g.checked).length,
+    selectedCount: m.items.filter((i) => i.clientSelected).length,
+  }));
+}
