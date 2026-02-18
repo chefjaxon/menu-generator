@@ -276,4 +276,65 @@ export const INGREDIENT_ALIASES: Map<string, string> = new Map([
   ['fettuccine', 'fettuccine'],
   ['linguine', 'linguine'],
   ['rigatoni', 'rigatoni'],
+
+  // ── Identity-protection entries ───────────────────────────────────────────
+  // These map a full phrase to itself so that the descriptor-stripping pass
+  // cannot accidentally collapse them to a shorter, wrong ingredient name.
+  // Example without protection: "ground beef" → strip "ground" → "beef" (WRONG)
+  // With this entry: "ground beef" exact-matches the alias table BEFORE stripping
+  // is applied inside normalizeIngredientName(), returning "ground beef" immediately.
+  //
+  // NOTE: normalizeIngredientName() does alias lookup AFTER stripping. To protect
+  // these, the stripPreparationDescriptors() function preserves comma-free names
+  // that still contain these words, and the alias table catches them if the full
+  // phrase survives stripping. Add more entries here for any ingredient where a
+  // "prep" word is actually part of the grocery identity.
+  ['ground beef', 'ground beef'],
+  ['ground pork', 'ground pork'],
+  ['ground turkey', 'ground turkey'],
+  ['ground lamb', 'ground lamb'],
+  ['ground chicken', 'ground chicken'],
+  ['ground veal', 'ground veal'],
+  ['ground meat', 'ground meat'],
+  ['cream cheese', 'cream cheese'],
+  ['sour cream', 'sour cream'],
+  ['ice cream', 'ice cream'],
+  ['whipped cream', 'whipped cream'],
+  ['heavy cream', 'heavy cream'],
+  ['heavy whipping cream', 'heavy cream'],
+  ['whipping cream', 'heavy cream'],
+  ['dried cranberries', 'dried cranberry'],
+  ['dried apricots', 'dried apricot'],
+  ['dried figs', 'dried fig'],
+  ['dried mango', 'dried mango'],
+  ['dried cherries', 'dried cherry'],
+  ['sun-dried tomatoes', 'sun-dried tomato'],
+  ['sun dried tomatoes', 'sun-dried tomato'],
+  ['roasted red peppers', 'roasted red pepper'],
+  ['roasted garlic', 'roasted garlic'],
+  ['smoked paprika', 'smoked paprika'],
+  ['smoked salmon', 'smoked salmon'],
+  ['smoked turkey', 'smoked turkey'],
+  ['smoked bacon', 'bacon'],
+  ['baked beans', 'baked beans'],
+  ['fried rice', 'fried rice'],
+  ['tomato paste', 'tomato paste'],
+  ['tomato sauce', 'tomato sauce'],
+  ['hot sauce', 'hot sauce'],
+  ['soy sauce', 'soy sauce'],
+  ['fish sauce', 'fish sauce'],
+  ['oyster sauce', 'oyster sauce'],
+  ['worcestershire sauce', 'worcestershire sauce'],
+  ['bbq sauce', 'bbq sauce'],
+  ['hoisin sauce', 'hoisin sauce'],
+  ['peanut butter', 'peanut butter'],
+  ['almond butter', 'almond butter'],
+  ['tahini', 'tahini'],
+  ['coconut milk', 'coconut milk'],
+  ['coconut cream', 'coconut cream'],
+  ['condensed milk', 'condensed milk'],
+  ['evaporated milk', 'evaporated milk'],
+  ['buttermilk', 'buttermilk'],
+  ['cream of tartar', 'cream of tartar'],
 ]);
+

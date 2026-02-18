@@ -204,13 +204,75 @@ export function consolidateExactDuplicates(items: GroceryItem[]): GroceryItem[] 
 // --- Ingredient name normalization ---
 
 /**
+ * Regex patterns for preparation descriptors that should be stripped from
+ * ingredient names before alias lookup.
+ *
+ * These patterns are intentionally conservative — they only match standalone
+ * words at word boundaries to avoid mangling ingredient identity.
+ *
+ * Identity-critical words like "ground" in "ground beef", "cream" in "cream cheese",
+ * or "powder" in "garlic powder" are protected via identity-protection entries in
+ * ingredient-aliases.ts that map the full phrase to itself before stripping can change it.
+ */
+
+// Adverb-adjective combos and standalone prep verbs (cut/cooking methods)
+const PREP_VERB_PATTERN =
+  /\b(?:(?:thinly|finely|coarsely|roughly|freshly)\s+)?(?:sliced|chopped|minced|diced|grated|shredded|crumbled|crushed|julienned|peeled|trimmed|halved|quartered|torn|saut[eé]ed|roasted|toasted|blanched|steamed|boiled|fried|baked|grilled|smoked)\b/gi;
+
+// Freshness / state adjectives that don't change grocery identity
+const PREP_ADJECTIVE_PATTERN =
+  /\b(?:fresh|dried|frozen|canned|raw|softened|melted|room[\s-]temperature|cold|warm|hot|cooled|thawed)\b/gi;
+
+/**
+ * Strip preparation descriptors from an ingredient name so that variants like
+ * "garlic clove, thinly sliced" and "fresh basil" normalize to "garlic clove"
+ * and "basil" respectively before the alias table lookup.
+ *
+ * Two-pass approach:
+ *   1. Strip comma-suffix: "garlic clove, thinly sliced" → "garlic clove"
+ *   2. Strip standalone prep words: "thinly sliced garlic" → "garlic"
+ *
+ * Returns the stripped string if it remains meaningful (≥ 2 chars), otherwise
+ * returns the comma-stripped form as a safe fallback.
+ *
+ * Pure function with no side effects.
+ */
+export function stripPreparationDescriptors(name: string): string {
+  // Pass 1 — drop everything after the first comma (the most common Recipe Keeper pattern)
+  const beforeComma = name.split(',')[0].trim();
+
+  // Pass 2 — strip standalone prep verbs and adjectives
+  const stripped = beforeComma
+    .replace(PREP_VERB_PATTERN, '')
+    .replace(PREP_ADJECTIVE_PATTERN, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // Guard: if stripping removed too much (result < 2 chars), use the comma-stripped form
+  return stripped.length >= 2 ? stripped : beforeComma;
+}
+
+/**
  * Normalize a single ingredient name using the static alias table.
- * Returns the canonical name if found; otherwise returns the trimmed, lowercased original.
+ *
+ * Lookup order (priority):
+ *  1. Try the original name (lowercased) directly — catches identity-protection
+ *     entries like "ground beef" → "ground beef" before stripping can alter them.
+ *  2. Strip preparation descriptors, then try the alias table again.
+ *  3. Return the stripped name as-is (lowercased) if no alias match.
+ *
  * Pure function with no side effects.
  */
 export function normalizeIngredientName(name: string): string {
-  const key = name.toLowerCase().trim();
-  return INGREDIENT_ALIASES.get(key) ?? key;
+  // Priority 1: exact alias match on original name (identity-protection entries)
+  const originalKey = name.toLowerCase().trim();
+  const directMatch = INGREDIENT_ALIASES.get(originalKey);
+  if (directMatch !== undefined) return directMatch;
+
+  // Priority 2: strip prep descriptors, then alias lookup
+  const stripped = stripPreparationDescriptors(name);
+  const strippedKey = stripped.toLowerCase().trim();
+  return INGREDIENT_ALIASES.get(strippedKey) ?? strippedKey;
 }
 
 /**
