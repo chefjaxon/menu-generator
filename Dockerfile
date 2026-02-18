@@ -26,9 +26,10 @@ COPY --from=base /app/node_modules ./node_modules
 COPY --from=base /app/package.json ./package.json
 COPY --from=base /app/public ./public
 COPY --from=base /app/prisma ./prisma
+COPY --from=base /app/prisma.config.js ./prisma.config.js
 COPY --from=base /app/tsconfig.json ./tsconfig.json
 COPY --from=base /app/next.config.mjs ./next.config.mjs
 
 EXPOSE 3000
 
-CMD sh -c "npx prisma migrate deploy --url \"$DATABASE_URL\" && npx prisma db seed && npm run start"
+CMD sh -c "npx prisma migrate deploy --config prisma.config.js && npx prisma db seed && npm run start"
