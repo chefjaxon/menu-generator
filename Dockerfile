@@ -9,7 +9,9 @@ COPY . .
 
 RUN npx prisma generate
 
-RUN npm run build
+# Dummy DATABASE_URL allows Next.js to collect page data at build time
+# without connecting to a real database. The real URL is injected at runtime.
+RUN DATABASE_URL="postgresql://build:build@localhost:5432/build" npm run build
 
 # --- Production stage ---
 FROM node:22-alpine AS runner
