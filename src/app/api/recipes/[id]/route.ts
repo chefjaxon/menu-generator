@@ -7,7 +7,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const recipe = getRecipeById(id);
+  const recipe = await getRecipeById(id);
   if (!recipe) {
     return NextResponse.json({ error: 'Recipe not found' }, { status: 404 });
   }
@@ -26,7 +26,7 @@ export async function PUT(
     return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
   }
 
-  const recipe = updateRecipe(id, parsed.data);
+  const recipe = await updateRecipe(id, parsed.data);
   if (!recipe) {
     return NextResponse.json({ error: 'Recipe not found' }, { status: 404 });
   }
@@ -38,7 +38,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const deleted = deleteRecipe(id);
+  const deleted = await deleteRecipe(id);
   if (!deleted) {
     return NextResponse.json({ error: 'Recipe not found' }, { status: 404 });
   }

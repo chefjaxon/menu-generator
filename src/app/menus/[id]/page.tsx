@@ -10,7 +10,7 @@ export default async function MenuDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const menu = getMenuById(id);
+  const menu = await getMenuById(id);
 
   if (!menu) {
     notFound();

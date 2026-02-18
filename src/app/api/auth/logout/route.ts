@@ -5,7 +5,7 @@ export async function POST(request: NextRequest) {
   const token = request.cookies.get('menu-gen-session')?.value;
 
   if (token) {
-    destroySession(token);
+    await destroySession(token);
   }
 
   const response = NextResponse.json({ success: true });

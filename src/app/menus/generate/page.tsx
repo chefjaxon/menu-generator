@@ -3,8 +3,8 @@ import { MenuGenerator } from '@/components/menus/menu-generator';
 
 export const dynamic = 'force-dynamic';
 
-export default function GenerateMenuPage() {
-  const clients = getAllClients();
+export default async function GenerateMenuPage() {
+  const clients = await getAllClients();
 
   return (
     <div>

@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
     }
 
-    const success = updateMenuItem(
+    const success = await updateMenuItem(
       parsed.data.menuItemId,
       parsed.data.newRecipeId,
       parsed.data.selectedProtein || null
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const result = getSwapSuggestions(menuId, menuItemId);
+    const result = await getSwapSuggestions(menuId, menuItemId);
     return NextResponse.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to get suggestions';

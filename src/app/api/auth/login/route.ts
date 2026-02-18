@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { prisma } from '@/lib/prisma';
 import { verifyPassword, createSession } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
@@ -11,29 +11,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Username and password are required' }, { status: 400 });
     }
 
-    const db = getDb();
-    const user = db.prepare('SELECT id, username, password_hash FROM users WHERE username = ?')
-      .get(username) as { id: string; username: string; password_hash: string } | undefined;
+    const user = await prisma.user.findUnique({
+      where: { username },
+      select: { id: true, username: true, passwordHash: true },
+    });
 
     if (!user) {
       return NextResponse.json({ error: 'Invalid username or password' }, { status: 401 });
     }
 
-    const valid = await verifyPassword(password, user.password_hash);
+    const valid = await verifyPassword(password, user.passwordHash);
     if (!valid) {
       return NextResponse.json({ error: 'Invalid username or password' }, { status: 401 });
     }
 
-    // Create session
-    const token = createSession(user.id);
+    const token = await createSession(user.id);
 
-    // Set cookie
     const response = NextResponse.json({ success: true, username: user.username });
     response.cookies.set('menu-gen-session', token, {
       httpOnly: true,
       sameSite: 'lax',
       path: '/',
-      maxAge: 7 * 24 * 60 * 60, // 7 days
+      maxAge: 7 * 24 * 60 * 60,
     });
 
     return response;

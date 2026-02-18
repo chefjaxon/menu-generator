@@ -7,7 +7,7 @@ export async function GET(
 ) {
   const { name } = await params;
   const decoded = decodeURIComponent(name);
-  const usage = getProteinUsageCount(decoded);
+  const usage = await getProteinUsageCount(decoded);
   return NextResponse.json({ name: decoded, usage });
 }
 
@@ -18,7 +18,7 @@ export async function DELETE(
   const { name } = await params;
   const decoded = decodeURIComponent(name);
 
-  const usage = getProteinUsageCount(decoded);
+  const usage = await getProteinUsageCount(decoded);
   if (usage > 0) {
     return NextResponse.json(
       { error: `Cannot delete: protein is used by ${usage} client(s)/recipe(s)` },
@@ -26,7 +26,7 @@ export async function DELETE(
     );
   }
 
-  const deleted = removeProtein(decoded);
+  const deleted = await removeProtein(decoded);
   if (!deleted) {
     return NextResponse.json({ error: 'Protein not found' }, { status: 404 });
   }

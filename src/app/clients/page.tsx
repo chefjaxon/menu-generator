@@ -5,8 +5,8 @@ import { ClientTable } from '@/components/clients/client-table';
 
 export const dynamic = 'force-dynamic';
 
-export default function ClientsPage() {
-  const clients = getAllClients();
+export default async function ClientsPage() {
+  const clients = await getAllClients();
 
   return (
     <div>

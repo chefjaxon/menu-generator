@@ -1,118 +1,77 @@
 import { nanoid } from 'nanoid';
-import { getDb } from '../db';
-import type { Recipe, Ingredient, CuisineType, ItemType } from '../types';
+import { prisma } from '../prisma';
+import type { Recipe, CuisineType, ItemType } from '../types';
 
-interface RecipeRow {
+function mapRecipe(row: {
   id: string;
   name: string;
   description: string | null;
   instructions: string | null;
-  cuisine_type: string;
-  item_type: string;
-  serving_size: number;
-  created_at: string;
-  updated_at: string;
-}
-
-interface IngredientRow {
-  id: string;
-  recipe_id: string;
-  name: string;
-  quantity: string | null;
-  unit: string | null;
-  sort_order: number;
-}
-
-function hydrateRecipe(row: RecipeRow): Recipe {
-  const db = getDb();
-  const ingredients = db.prepare(
-    'SELECT * FROM recipe_ingredients WHERE recipe_id = ? ORDER BY sort_order'
-  ).all(row.id) as IngredientRow[];
-
-  const proteins = db.prepare(
-    'SELECT protein FROM recipe_protein_swaps WHERE recipe_id = ?'
-  ).all(row.id) as Array<{ protein: string }>;
-
-  const tags = db.prepare(
-    'SELECT tag FROM recipe_tags WHERE recipe_id = ?'
-  ).all(row.id) as Array<{ tag: string }>;
-
+  cuisineType: string;
+  itemType: string;
+  servingSize: number;
+  createdAt: Date;
+  updatedAt: Date;
+  ingredients: Array<{ id: string; name: string; quantity: string | null; unit: string | null; sortOrder: number }>;
+  proteinSwaps: Array<{ protein: string }>;
+  tags: Array<{ tag: string }>;
+}): Recipe {
   return {
     id: row.id,
     name: row.name,
     description: row.description,
     instructions: row.instructions,
-    cuisineType: row.cuisine_type as CuisineType,
-    itemType: row.item_type as ItemType,
-    servingSize: row.serving_size,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-    ingredients: ingredients.map((i) => ({
+    cuisineType: row.cuisineType as CuisineType,
+    itemType: row.itemType as ItemType,
+    servingSize: row.servingSize,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    ingredients: row.ingredients.map((i) => ({
       id: i.id,
       name: i.name,
       quantity: i.quantity,
       unit: i.unit,
-      sortOrder: i.sort_order,
+      sortOrder: i.sortOrder,
     })),
-    proteinSwaps: proteins.map((p) => p.protein),
-    tags: tags.map((t) => t.tag),
+    proteinSwaps: row.proteinSwaps.map((p) => p.protein),
+    tags: row.tags.map((t) => t.tag),
   };
 }
 
-export function getAllRecipes(filters?: {
+const recipeInclude = {
+  ingredients: { orderBy: { sortOrder: 'asc' as const } },
+  proteinSwaps: true,
+  tags: true,
+};
+
+export async function getAllRecipes(filters?: {
   cuisine?: string;
   itemType?: string;
   tag?: string;
   protein?: string;
   search?: string;
-}): Recipe[] {
-  const db = getDb();
-  let query = 'SELECT DISTINCT r.* FROM recipes r';
-  const conditions: string[] = [];
-  const params: string[] = [];
-
-  if (filters?.tag) {
-    query += ' JOIN recipe_tags rt ON rt.recipe_id = r.id';
-    conditions.push('rt.tag = ?');
-    params.push(filters.tag);
-  }
-
-  if (filters?.protein) {
-    query += ' JOIN recipe_protein_swaps rp ON rp.recipe_id = r.id';
-    conditions.push('rp.protein = ?');
-    params.push(filters.protein);
-  }
-
-  if (filters?.cuisine) {
-    conditions.push('r.cuisine_type = ?');
-    params.push(filters.cuisine);
-  }
-
-  if (filters?.itemType) {
-    conditions.push('r.item_type = ?');
-    params.push(filters.itemType);
-  }
-
-  if (filters?.search) {
-    conditions.push('r.name LIKE ?');
-    params.push(`%${filters.search}%`);
-  }
-
-  if (conditions.length > 0) {
-    query += ' WHERE ' + conditions.join(' AND ');
-  }
-
-  query += ' ORDER BY r.updated_at DESC';
-
-  const rows = db.prepare(query).all(...params) as RecipeRow[];
-  return rows.map(hydrateRecipe);
+}): Promise<Recipe[]> {
+  const rows = await prisma.recipe.findMany({
+    where: {
+      ...(filters?.cuisine ? { cuisineType: filters.cuisine } : {}),
+      ...(filters?.itemType ? { itemType: filters.itemType } : {}),
+      ...(filters?.tag ? { tags: { some: { tag: filters.tag } } } : {}),
+      ...(filters?.protein ? { proteinSwaps: { some: { protein: filters.protein } } } : {}),
+      ...(filters?.search ? { name: { contains: filters.search, mode: 'insensitive' } } : {}),
+    },
+    include: recipeInclude,
+    orderBy: { updatedAt: 'desc' },
+  });
+  return rows.map(mapRecipe);
 }
 
-export function getRecipeById(id: string): Recipe | null {
-  const db = getDb();
-  const row = db.prepare('SELECT * FROM recipes WHERE id = ?').get(id) as RecipeRow | undefined;
+export async function getRecipeById(id: string): Promise<Recipe | null> {
+  const row = await prisma.recipe.findUnique({
+    where: { id },
+    include: recipeInclude,
+  });
   if (!row) return null;
-  return hydrateRecipe(row);
+  return mapRecipe(row);
 }
 
 export interface RecipeInput {
@@ -127,85 +86,82 @@ export interface RecipeInput {
   tags: string[];
 }
 
-export function createRecipe(data: RecipeInput): Recipe {
-  const db = getDb();
+export async function createRecipe(data: RecipeInput): Promise<Recipe> {
   const id = nanoid();
-
-  const insert = db.transaction(() => {
-    db.prepare(
-      `INSERT INTO recipes (id, name, description, instructions, cuisine_type, item_type, serving_size)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
-    ).run(id, data.name, data.description || null, data.instructions || null, data.cuisineType, data.itemType, data.servingSize);
-
-    for (let i = 0; i < data.ingredients.length; i++) {
-      const ing = data.ingredients[i];
-      db.prepare(
-        `INSERT INTO recipe_ingredients (id, recipe_id, name, quantity, unit, sort_order)
-         VALUES (?, ?, ?, ?, ?, ?)`
-      ).run(nanoid(), id, ing.name, ing.quantity || null, ing.unit || null, i);
-    }
-
-    for (const protein of data.proteinSwaps) {
-      db.prepare(
-        'INSERT INTO recipe_protein_swaps (id, recipe_id, protein) VALUES (?, ?, ?)'
-      ).run(nanoid(), id, protein);
-    }
-
-    for (const tag of data.tags) {
-      db.prepare(
-        'INSERT INTO recipe_tags (id, recipe_id, tag) VALUES (?, ?, ?)'
-      ).run(nanoid(), id, tag);
-    }
+  await prisma.recipe.create({
+    data: {
+      id,
+      name: data.name,
+      description: data.description || null,
+      instructions: data.instructions || null,
+      cuisineType: data.cuisineType,
+      itemType: data.itemType,
+      servingSize: data.servingSize,
+      ingredients: {
+        create: data.ingredients.map((ing, i) => ({
+          id: nanoid(),
+          name: ing.name,
+          quantity: ing.quantity || null,
+          unit: ing.unit || null,
+          sortOrder: i,
+        })),
+      },
+      proteinSwaps: {
+        create: data.proteinSwaps.map((protein) => ({ id: nanoid(), protein })),
+      },
+      tags: {
+        create: data.tags.map((tag) => ({ id: nanoid(), tag })),
+      },
+    },
   });
-
-  insert();
-  return getRecipeById(id)!;
+  return (await getRecipeById(id))!;
 }
 
-export function updateRecipe(id: string, data: RecipeInput): Recipe | null {
-  const db = getDb();
-  const existing = db.prepare('SELECT id FROM recipes WHERE id = ?').get(id);
+export async function updateRecipe(id: string, data: RecipeInput): Promise<Recipe | null> {
+  const existing = await prisma.recipe.findUnique({ where: { id }, select: { id: true } });
   if (!existing) return null;
 
-  const update = db.transaction(() => {
-    db.prepare(
-      `UPDATE recipes SET name = ?, description = ?, instructions = ?, cuisine_type = ?, item_type = ?, serving_size = ?, updated_at = datetime('now')
-       WHERE id = ?`
-    ).run(data.name, data.description || null, data.instructions || null, data.cuisineType, data.itemType, data.servingSize, id);
+  await prisma.$transaction([
+    prisma.recipe.update({
+      where: { id },
+      data: {
+        name: data.name,
+        description: data.description || null,
+        instructions: data.instructions || null,
+        cuisineType: data.cuisineType,
+        itemType: data.itemType,
+        servingSize: data.servingSize,
+      },
+    }),
+    prisma.recipeIngredient.deleteMany({ where: { recipeId: id } }),
+    prisma.recipeProteinSwap.deleteMany({ where: { recipeId: id } }),
+    prisma.recipeTag.deleteMany({ where: { recipeId: id } }),
+    prisma.recipeIngredient.createMany({
+      data: data.ingredients.map((ing, i) => ({
+        id: nanoid(),
+        recipeId: id,
+        name: ing.name,
+        quantity: ing.quantity || null,
+        unit: ing.unit || null,
+        sortOrder: i,
+      })),
+    }),
+    prisma.recipeProteinSwap.createMany({
+      data: data.proteinSwaps.map((protein) => ({ id: nanoid(), recipeId: id, protein })),
+    }),
+    prisma.recipeTag.createMany({
+      data: data.tags.map((tag) => ({ id: nanoid(), recipeId: id, tag })),
+    }),
+  ]);
 
-    // Replace ingredients
-    db.prepare('DELETE FROM recipe_ingredients WHERE recipe_id = ?').run(id);
-    for (let i = 0; i < data.ingredients.length; i++) {
-      const ing = data.ingredients[i];
-      db.prepare(
-        `INSERT INTO recipe_ingredients (id, recipe_id, name, quantity, unit, sort_order)
-         VALUES (?, ?, ?, ?, ?, ?)`
-      ).run(nanoid(), id, ing.name, ing.quantity || null, ing.unit || null, i);
-    }
-
-    // Replace proteins
-    db.prepare('DELETE FROM recipe_protein_swaps WHERE recipe_id = ?').run(id);
-    for (const protein of data.proteinSwaps) {
-      db.prepare(
-        'INSERT INTO recipe_protein_swaps (id, recipe_id, protein) VALUES (?, ?, ?)'
-      ).run(nanoid(), id, protein);
-    }
-
-    // Replace tags
-    db.prepare('DELETE FROM recipe_tags WHERE recipe_id = ?').run(id);
-    for (const tag of data.tags) {
-      db.prepare(
-        'INSERT INTO recipe_tags (id, recipe_id, tag) VALUES (?, ?, ?)'
-      ).run(nanoid(), id, tag);
-    }
-  });
-
-  update();
   return getRecipeById(id);
 }
 
-export function deleteRecipe(id: string): boolean {
-  const db = getDb();
-  const result = db.prepare('DELETE FROM recipes WHERE id = ?').run(id);
-  return result.changes > 0;
+export async function deleteRecipe(id: string): Promise<boolean> {
+  try {
+    await prisma.recipe.delete({ where: { id } });
+    return true;
+  } catch {
+    return false;
+  }
 }

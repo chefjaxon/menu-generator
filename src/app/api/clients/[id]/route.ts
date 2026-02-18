@@ -7,7 +7,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const client = getClientById(id);
+  const client = await getClientById(id);
   if (!client) {
     return NextResponse.json({ error: 'Client not found' }, { status: 404 });
   }
@@ -26,7 +26,7 @@ export async function PUT(
     return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
   }
 
-  const client = updateClient(id, parsed.data);
+  const client = await updateClient(id, parsed.data);
   if (!client) {
     return NextResponse.json({ error: 'Client not found' }, { status: 404 });
   }
@@ -38,7 +38,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const deleted = deleteClient(id);
+  const deleted = await deleteClient(id);
   if (!deleted) {
     return NextResponse.json({ error: 'Client not found' }, { status: 404 });
   }

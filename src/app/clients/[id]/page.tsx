@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function EditClientPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const client = getClientById(id);
+  const client = await getClientById(id);
 
   if (!client) {
     notFound();

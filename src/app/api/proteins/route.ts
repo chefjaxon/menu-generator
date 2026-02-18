@@ -4,7 +4,7 @@ import { getAllProteins, addProtein } from '@/lib/queries/proteins';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const proteins = getAllProteins();
+  const proteins = await getAllProteins();
   return NextResponse.json(proteins);
 }
 
@@ -16,11 +16,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Protein name is required' }, { status: 400 });
   }
 
-  const existing = getAllProteins();
+  const existing = await getAllProteins();
   if (existing.includes(name)) {
     return NextResponse.json({ error: 'Protein already exists' }, { status: 409 });
   }
 
-  addProtein(name);
+  await addProtein(name);
   return NextResponse.json({ name }, { status: 201 });
 }

@@ -1,47 +1,51 @@
 import { nanoid } from 'nanoid';
-import { getDb } from '../db';
+import { prisma } from '../prisma';
 
-export function getAllProteins(): string[] {
-  const db = getDb();
-  const rows = db.prepare('SELECT name FROM proteins ORDER BY sort_order ASC, name ASC').all() as Array<{ name: string }>;
+export async function getAllProteins(): Promise<string[]> {
+  const rows = await prisma.protein.findMany({
+    orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+    select: { name: true },
+  });
   return rows.map((r) => r.name);
 }
 
-export function addProtein(name: string): void {
-  const db = getDb();
-  const maxOrder = db.prepare('SELECT COALESCE(MAX(sort_order), -1) as max_order FROM proteins').get() as { max_order: number };
-  db.prepare('INSERT INTO proteins (id, name, sort_order) VALUES (?, ?, ?)').run(
-    nanoid(),
-    name.toLowerCase().trim(),
-    maxOrder.max_order + 1
-  );
+export async function addProtein(name: string): Promise<void> {
+  const agg = await prisma.protein.aggregate({ _max: { sortOrder: true } });
+  const maxOrder = agg._max.sortOrder ?? -1;
+  await prisma.protein.create({
+    data: {
+      id: nanoid(),
+      name: name.toLowerCase().trim(),
+      sortOrder: maxOrder + 1,
+    },
+  });
 }
 
-export function removeProtein(name: string): boolean {
-  const db = getDb();
-  const usage = getProteinUsageCount(name);
+export async function removeProtein(name: string): Promise<boolean> {
+  const usage = await getProteinUsageCount(name);
   if (usage > 0) return false;
-  const result = db.prepare('DELETE FROM proteins WHERE name = ?').run(name);
-  return result.changes > 0;
+  try {
+    await prisma.protein.delete({ where: { name } });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
-export function getProteinUsageCount(name: string): number {
-  const db = getDb();
-  const clientCount = db.prepare(
-    'SELECT COUNT(*) as cnt FROM client_proteins WHERE protein = ?'
-  ).get(name) as { cnt: number };
-  const recipeCount = db.prepare(
-    'SELECT COUNT(*) as cnt FROM recipe_protein_swaps WHERE protein = ?'
-  ).get(name) as { cnt: number };
-  return clientCount.cnt + recipeCount.cnt;
+export async function getProteinUsageCount(name: string): Promise<number> {
+  const [clientCount, recipeCount] = await Promise.all([
+    prisma.clientProtein.count({ where: { protein: name } }),
+    prisma.recipeProteinSwap.count({ where: { protein: name } }),
+  ]);
+  return clientCount + recipeCount;
 }
 
-export function getProteinUsages(): Record<string, number> {
-  const db = getDb();
-  const proteins = getAllProteins();
+export async function getProteinUsages(): Promise<Record<string, number>> {
+  const proteins = await getAllProteins();
+  const counts = await Promise.all(proteins.map((p) => getProteinUsageCount(p)));
   const usages: Record<string, number> = {};
-  for (const p of proteins) {
-    usages[p] = getProteinUsageCount(p);
+  for (let i = 0; i < proteins.length; i++) {
+    usages[proteins[i]] = counts[i];
   }
   return usages;
 }

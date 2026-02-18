@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     search: searchParams.get('search') || undefined,
   };
 
-  const recipes = getAllRecipes(filters);
+  const recipes = await getAllRecipes(filters);
   return NextResponse.json(recipes);
 }
 
@@ -24,6 +24,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
   }
 
-  const recipe = createRecipe(parsed.data);
+  const recipe = await createRecipe(parsed.data);
   return NextResponse.json(recipe, { status: 201 });
 }

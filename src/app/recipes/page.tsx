@@ -5,8 +5,8 @@ import { RecipeTable } from '@/components/recipes/recipe-table';
 
 export const dynamic = 'force-dynamic';
 
-export default function RecipesPage() {
-  const recipes = getAllRecipes();
+export default async function RecipesPage() {
+  const recipes = await getAllRecipes();
 
   return (
     <div>

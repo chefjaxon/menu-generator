@@ -6,7 +6,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const menu = getMenuById(id);
+  const menu = await getMenuById(id);
   if (!menu) {
     return NextResponse.json({ error: 'Menu not found' }, { status: 404 });
   }
@@ -18,7 +18,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const deleted = deleteMenu(id);
+  const deleted = await deleteMenu(id);
   if (!deleted) {
     return NextResponse.json({ error: 'Menu not found' }, { status: 404 });
   }

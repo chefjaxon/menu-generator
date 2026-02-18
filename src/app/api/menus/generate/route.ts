@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const result = generateMenu(parsed.data.clientId);
+    const result = await generateMenu(parsed.data.clientId);
     return NextResponse.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to generate menu';

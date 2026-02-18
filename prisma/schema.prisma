@@ -1,0 +1,180 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Recipe {
+  id           String   @id
+  name         String
+  description  String?
+  instructions String?
+  cuisineType  String   @map("cuisine_type")
+  itemType     String   @map("item_type") @default("meal")
+  servingSize  Int      @map("serving_size") @default(1)
+  createdAt    DateTime @map("created_at") @default(now())
+  updatedAt    DateTime @map("updated_at") @updatedAt
+
+  ingredients   RecipeIngredient[]
+  proteinSwaps  RecipeProteinSwap[]
+  tags          RecipeTag[]
+  menuItems     MenuItem[]
+
+  @@map("recipes")
+}
+
+model RecipeIngredient {
+  id        String  @id
+  recipeId  String  @map("recipe_id")
+  name      String
+  quantity  String?
+  unit      String?
+  sortOrder Int     @map("sort_order") @default(0)
+
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@map("recipe_ingredients")
+}
+
+model RecipeProteinSwap {
+  id       String @id
+  recipeId String @map("recipe_id")
+  protein  String
+
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@unique([recipeId, protein])
+  @@map("recipe_protein_swaps")
+}
+
+model RecipeTag {
+  id       String @id
+  recipeId String @map("recipe_id")
+  tag      String
+
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@map("recipe_tags")
+}
+
+model Client {
+  id           String   @id
+  name         String
+  itemsPerMenu Int      @map("items_per_menu") @default(5)
+  notes        String?
+  createdAt    DateTime @map("created_at") @default(now())
+  updatedAt    DateTime @map("updated_at") @updatedAt
+
+  proteins           ClientProtein[]
+  restrictions       ClientRestriction[]
+  cuisinePreferences ClientCuisinePreference[]
+  menuComposition    ClientMenuComposition[]
+  menus              Menu[]
+
+  @@map("clients")
+}
+
+model ClientProtein {
+  id       String @id
+  clientId String @map("client_id")
+  protein  String
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, protein])
+  @@map("client_proteins")
+}
+
+model ClientRestriction {
+  id          String @id
+  clientId    String @map("client_id")
+  restriction String
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, restriction])
+  @@map("client_restrictions")
+}
+
+model ClientCuisinePreference {
+  id          String @id
+  clientId    String @map("client_id")
+  cuisineType String @map("cuisine_type")
+  weight      Int    @default(3)
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, cuisineType])
+  @@map("client_cuisine_preferences")
+}
+
+model ClientMenuComposition {
+  id       String @id
+  clientId String @map("client_id")
+  category String
+  count    Int    @default(0)
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, category])
+  @@map("client_menu_composition")
+}
+
+model Menu {
+  id        String   @id
+  clientId  String   @map("client_id")
+  createdAt DateTime @map("created_at") @default(now())
+  finalized Boolean  @default(false)
+  weekLabel String?  @map("week_label")
+
+  client Client     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  items  MenuItem[]
+
+  @@map("menus")
+}
+
+model MenuItem {
+  id              String  @id
+  menuId          String  @map("menu_id")
+  recipeId        String  @map("recipe_id")
+  selectedProtein String? @map("selected_protein")
+  sortOrder       Int     @map("sort_order") @default(0)
+
+  menu   Menu   @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  recipe Recipe @relation(fields: [recipeId], references: [id])
+
+  @@map("menu_items")
+}
+
+model User {
+  id           String   @id
+  username     String   @unique
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @map("created_at") @default(now())
+
+  sessions Session[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @map("created_at") @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model Protein {
+  id        String @id
+  name      String @unique
+  sortOrder Int    @map("sort_order") @default(0)
+
+  @@map("proteins")
+}

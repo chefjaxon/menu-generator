@@ -6,9 +6,8 @@ import { MenuHistoryTable } from '@/components/menus/menu-history-table';
 
 export const dynamic = 'force-dynamic';
 
-export default function MenusPage() {
-  const menus = getAllMenus();
-  const clients = getAllClients();
+export default async function MenusPage() {
+  const [menus, clients] = await Promise.all([getAllMenus(), getAllClients()]);
 
   return (
     <div>

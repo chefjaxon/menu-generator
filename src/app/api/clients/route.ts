@@ -3,7 +3,7 @@ import { getAllClients, createClient } from '@/lib/queries/clients';
 import { clientCreateSchema } from '@/lib/validations';
 
 export async function GET() {
-  const clients = getAllClients();
+  const clients = await getAllClients();
   return NextResponse.json(clients);
 }
 
@@ -15,6 +15,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
   }
 
-  const client = createClient(parsed.data);
+  const client = await createClient(parsed.data);
   return NextResponse.json(client, { status: 201 });
 }

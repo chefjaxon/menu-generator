@@ -1,158 +1,166 @@
 import { nanoid } from 'nanoid';
-import { getDb } from '../db';
-import type { Menu, MenuItem } from '../types';
+import { prisma } from '../prisma';
 import { getRecipeById } from './recipes';
+import type { Menu, MenuItem } from '../types';
 
-interface MenuRow {
+function mapMenu(row: {
   id: string;
-  client_id: string;
-  created_at: string;
-  finalized: number;
-  week_label: string | null;
-  client_name?: string;
-}
-
-interface MenuItemRow {
-  id: string;
-  menu_id: string;
-  recipe_id: string;
-  selected_protein: string | null;
-  sort_order: number;
-}
-
-function hydrateMenu(row: MenuRow, includeRecipes = false): Menu {
-  const db = getDb();
-  const itemRows = db.prepare(
-    'SELECT * FROM menu_items WHERE menu_id = ? ORDER BY sort_order'
-  ).all(row.id) as MenuItemRow[];
-
-  const items: MenuItem[] = itemRows.map((ir) => ({
+  clientId: string;
+  createdAt: Date;
+  finalized: boolean;
+  weekLabel: string | null;
+  client?: { name: string };
+  items: Array<{
+    id: string;
+    menuId: string;
+    recipeId: string;
+    selectedProtein: string | null;
+    sortOrder: number;
+  }>;
+}, includeRecipes = false, recipes: Record<string, Awaited<ReturnType<typeof getRecipeById>>> = {}): Menu {
+  const items: MenuItem[] = row.items.map((ir) => ({
     id: ir.id,
-    menuId: ir.menu_id,
-    recipeId: ir.recipe_id,
-    selectedProtein: ir.selected_protein,
-    sortOrder: ir.sort_order,
-    recipe: includeRecipes ? getRecipeById(ir.recipe_id) || undefined : undefined,
+    menuId: ir.menuId,
+    recipeId: ir.recipeId,
+    selectedProtein: ir.selectedProtein,
+    sortOrder: ir.sortOrder,
+    recipe: includeRecipes ? (recipes[ir.recipeId] || undefined) : undefined,
   }));
 
   return {
     id: row.id,
-    clientId: row.client_id,
-    clientName: row.client_name,
-    createdAt: row.created_at,
-    finalized: row.finalized === 1,
-    weekLabel: row.week_label,
+    clientId: row.clientId,
+    clientName: row.client?.name,
+    createdAt: row.createdAt.toISOString(),
+    finalized: row.finalized,
+    weekLabel: row.weekLabel,
     items,
   };
 }
 
-export function getAllMenus(clientId?: string): Menu[] {
-  const db = getDb();
-  let query = `
-    SELECT m.*, c.name as client_name
-    FROM menus m
-    JOIN clients c ON c.id = m.client_id
-  `;
-  const params: string[] = [];
+export async function getAllMenus(clientId?: string): Promise<Menu[]> {
+  const rows = await prisma.menu.findMany({
+    where: clientId ? { clientId } : undefined,
+    include: {
+      client: { select: { name: true } },
+      items: { orderBy: { sortOrder: 'asc' } },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+  return rows.map((r) => mapMenu(r));
+}
 
-  if (clientId) {
-    query += ' WHERE m.client_id = ?';
-    params.push(clientId);
+export async function getMenuById(id: string): Promise<Menu | null> {
+  const row = await prisma.menu.findUnique({
+    where: { id },
+    include: {
+      client: { select: { name: true } },
+      items: { orderBy: { sortOrder: 'asc' } },
+    },
+  });
+  if (!row) return null;
+
+  const recipeIds = [...new Set(row.items.map((i) => i.recipeId))];
+  const recipeList = await Promise.all(recipeIds.map((rid) => getRecipeById(rid)));
+  const recipes: Record<string, Awaited<ReturnType<typeof getRecipeById>>> = {};
+  for (let i = 0; i < recipeIds.length; i++) {
+    recipes[recipeIds[i]] = recipeList[i];
   }
 
-  query += ' ORDER BY m.created_at DESC';
-
-  const rows = db.prepare(query).all(...params) as MenuRow[];
-  return rows.map((r) => hydrateMenu(r));
+  return mapMenu(row, true, recipes);
 }
 
-export function getMenuById(id: string): Menu | null {
-  const db = getDb();
-  const row = db.prepare(`
-    SELECT m.*, c.name as client_name
-    FROM menus m
-    JOIN clients c ON c.id = m.client_id
-    WHERE m.id = ?
-  `).get(id) as MenuRow | undefined;
-
-  if (!row) return null;
-  return hydrateMenu(row, true);
-}
-
-export function getRecentRecipeIdsForClient(clientId: string, menuCount = 6): Set<string> {
-  const db = getDb();
-  const menus = db.prepare(
-    'SELECT id FROM menus WHERE client_id = ? AND finalized = 1 ORDER BY created_at DESC LIMIT ?'
-  ).all(clientId, menuCount) as Array<{ id: string }>;
-
-  const menuIds = menus.map((m) => m.id);
-  if (menuIds.length === 0) return new Set();
-
-  const placeholders = menuIds.map(() => '?').join(',');
-  const items = db.prepare(
-    `SELECT DISTINCT recipe_id FROM menu_items WHERE menu_id IN (${placeholders})`
-  ).all(...menuIds) as Array<{ recipe_id: string }>;
-
-  return new Set(items.map((i) => i.recipe_id));
-}
-
-export function createDraftMenu(
-  clientId: string,
-  items: Array<{ recipeId: string; selectedProtein: string | null }>
-): Menu {
-  const db = getDb();
-  const menuId = nanoid();
-
-  // Delete any existing drafts for this client
-  const existingDrafts = db.prepare(
-    'SELECT id FROM menus WHERE client_id = ? AND finalized = 0'
-  ).all(clientId) as Array<{ id: string }>;
-
-  const insert = db.transaction(() => {
-    for (const draft of existingDrafts) {
-      db.prepare('DELETE FROM menu_items WHERE menu_id = ?').run(draft.id);
-      db.prepare('DELETE FROM menus WHERE id = ?').run(draft.id);
-    }
-
-    db.prepare(
-      'INSERT INTO menus (id, client_id, finalized) VALUES (?, ?, 0)'
-    ).run(menuId, clientId);
-
-    for (let i = 0; i < items.length; i++) {
-      db.prepare(
-        'INSERT INTO menu_items (id, menu_id, recipe_id, selected_protein, sort_order) VALUES (?, ?, ?, ?, ?)'
-      ).run(nanoid(), menuId, items[i].recipeId, items[i].selectedProtein, i);
-    }
+export async function getRecentRecipeIdsForClient(clientId: string, menuCount = 6): Promise<Set<string>> {
+  const menus = await prisma.menu.findMany({
+    where: { clientId, finalized: true },
+    orderBy: { createdAt: 'desc' },
+    take: menuCount,
+    select: { id: true },
   });
 
-  insert();
-  return getMenuById(menuId)!;
+  if (menus.length === 0) return new Set();
+
+  const menuIds = menus.map((m) => m.id);
+  const items = await prisma.menuItem.findMany({
+    where: { menuId: { in: menuIds } },
+    select: { recipeId: true },
+    distinct: ['recipeId'],
+  });
+
+  return new Set(items.map((i) => i.recipeId));
 }
 
-export function finalizeMenu(menuId: string, weekLabel?: string): Menu | null {
-  const db = getDb();
+export async function createDraftMenu(
+  clientId: string,
+  items: Array<{ recipeId: string; selectedProtein: string | null }>
+): Promise<Menu> {
+  const menuId = nanoid();
+
+  const existingDrafts = await prisma.menu.findMany({
+    where: { clientId, finalized: false },
+    select: { id: true },
+  });
+
+  await prisma.$transaction(async (tx) => {
+    for (const draft of existingDrafts) {
+      await tx.menuItem.deleteMany({ where: { menuId: draft.id } });
+      await tx.menu.delete({ where: { id: draft.id } });
+    }
+
+    await tx.menu.create({
+      data: {
+        id: menuId,
+        clientId,
+        finalized: false,
+        items: {
+          create: items.map((item, i) => ({
+            id: nanoid(),
+            recipeId: item.recipeId,
+            selectedProtein: item.selectedProtein,
+            sortOrder: i,
+          })),
+        },
+      },
+    });
+  });
+
+  return (await getMenuById(menuId))!;
+}
+
+export async function finalizeMenu(menuId: string, weekLabel?: string): Promise<Menu | null> {
   const label = weekLabel || new Date().toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric',
   });
 
-  const result = db.prepare(
-    `UPDATE menus SET finalized = 1, week_label = ? WHERE id = ? AND finalized = 0`
-  ).run(label, menuId);
+  try {
+    await prisma.menu.update({
+      where: { id: menuId, finalized: false },
+      data: { finalized: true, weekLabel: label },
+    });
+  } catch {
+    return null;
+  }
 
-  if (result.changes === 0) return null;
   return getMenuById(menuId);
 }
 
-export function updateMenuItem(menuItemId: string, recipeId: string, selectedProtein: string | null): boolean {
-  const db = getDb();
-  const result = db.prepare(
-    'UPDATE menu_items SET recipe_id = ?, selected_protein = ? WHERE id = ?'
-  ).run(recipeId, selectedProtein, menuItemId);
-  return result.changes > 0;
+export async function updateMenuItem(menuItemId: string, recipeId: string, selectedProtein: string | null): Promise<boolean> {
+  try {
+    await prisma.menuItem.update({
+      where: { id: menuItemId },
+      data: { recipeId, selectedProtein },
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
-export function deleteMenu(id: string): boolean {
-  const db = getDb();
-  const result = db.prepare('DELETE FROM menus WHERE id = ?').run(id);
-  return result.changes > 0;
+export async function deleteMenu(id: string): Promise<boolean> {
+  try {
+    await prisma.menu.delete({ where: { id } });
+    return true;
+  } catch {
+    return false;
+  }
 }

@@ -5,7 +5,7 @@ import { finalizeMenuSchema } from '@/lib/validations';
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const clientId = searchParams.get('clientId') || undefined;
-  const menus = getAllMenus(clientId);
+  const menus = await getAllMenus(clientId);
   return NextResponse.json(menus);
 }
 
@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
   }
 
-  const menu = finalizeMenu(parsed.data.menuId, parsed.data.weekLabel);
+  const menu = await finalizeMenu(parsed.data.menuId, parsed.data.weekLabel);
   if (!menu) {
     return NextResponse.json({ error: 'Menu not found or already finalized' }, { status: 404 });
   }

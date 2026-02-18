@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { nanoid } from 'nanoid';
-import { getDb } from './db';
+import { prisma } from './prisma';
 
 const SESSION_EXPIRY_DAYS = 7;
 
@@ -12,40 +12,42 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   return bcrypt.compare(password, hash);
 }
 
-export function createSession(userId: string): string {
-  const db = getDb();
+export async function createSession(userId: string): Promise<string> {
   const token = nanoid(32);
-  const expiresAt = new Date(Date.now() + SESSION_EXPIRY_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const expiresAt = new Date(Date.now() + SESSION_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
 
-  db.prepare(
-    'INSERT INTO sessions (id, user_id, token, expires_at) VALUES (?, ?, ?, ?)'
-  ).run(nanoid(), userId, token, expiresAt);
+  await prisma.session.create({
+    data: {
+      id: nanoid(),
+      userId,
+      token,
+      expiresAt,
+    },
+  });
 
   return token;
 }
 
-export function validateSession(token: string): { userId: string; username: string } | null {
-  const db = getDb();
-  const row = db.prepare(`
-    SELECT s.user_id, u.username, s.expires_at
-    FROM sessions s
-    JOIN users u ON u.id = s.user_id
-    WHERE s.token = ?
-  `).get(token) as { user_id: string; username: string; expires_at: string } | undefined;
+export async function validateSession(token: string): Promise<{ userId: string; username: string } | null> {
+  const row = await prisma.session.findUnique({
+    where: { token },
+    include: { user: { select: { username: true } } },
+  });
 
   if (!row) return null;
 
-  // Check expiry
-  if (new Date(row.expires_at) < new Date()) {
-    // Clean up expired session
-    db.prepare('DELETE FROM sessions WHERE token = ?').run(token);
+  if (row.expiresAt < new Date()) {
+    await prisma.session.delete({ where: { token } });
     return null;
   }
 
-  return { userId: row.user_id, username: row.username };
+  return { userId: row.userId, username: row.user.username };
 }
 
-export function destroySession(token: string): void {
-  const db = getDb();
-  db.prepare('DELETE FROM sessions WHERE token = ?').run(token);
+export async function destroySession(token: string): Promise<void> {
+  try {
+    await prisma.session.delete({ where: { token } });
+  } catch {
+    // session may not exist, ignore
+  }
 }

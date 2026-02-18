@@ -1,28 +1,32 @@
 import Link from 'next/link';
 import { ChefHat, Users, CalendarDays, Sparkles } from 'lucide-react';
-import { getDb } from '@/lib/db';
+import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
-function getStats() {
-  const db = getDb();
-  const recipeCount = (db.prepare('SELECT COUNT(*) as count FROM recipes').get() as { count: number }).count;
-  const clientCount = (db.prepare('SELECT COUNT(*) as count FROM clients').get() as { count: number }).count;
-  const menuCount = (db.prepare('SELECT COUNT(*) as count FROM menus WHERE finalized = 1').get() as { count: number }).count;
-  const recentMenus = db.prepare(`
-    SELECT m.id, m.week_label, m.created_at, c.name as client_name,
-      (SELECT COUNT(*) FROM menu_items WHERE menu_id = m.id) as item_count
-    FROM menus m
-    JOIN clients c ON c.id = m.client_id
-    WHERE m.finalized = 1
-    ORDER BY m.created_at DESC
-    LIMIT 5
-  `).all() as Array<{ id: string; week_label: string | null; created_at: string; client_name: string; item_count: number }>;
+async function getStats() {
+  const [recipeCount, clientCount, menuCount, recentMenus] = await Promise.all([
+    prisma.recipe.count(),
+    prisma.client.count(),
+    prisma.menu.count({ where: { finalized: true } }),
+    prisma.menu.findMany({
+      where: { finalized: true },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+      select: {
+        id: true,
+        weekLabel: true,
+        createdAt: true,
+        client: { select: { name: true } },
+        _count: { select: { items: true } },
+      },
+    }),
+  ]);
   return { recipeCount, clientCount, menuCount, recentMenus };
 }
 
-export default function DashboardPage() {
-  const { recipeCount, clientCount, menuCount, recentMenus } = getStats();
+export default async function DashboardPage() {
+  const { recipeCount, clientCount, menuCount, recentMenus } = await getStats();
 
   return (
     <div>
@@ -87,9 +91,9 @@ export default function DashboardPage() {
                 className="flex items-center justify-between p-4 hover:bg-muted transition-colors"
               >
                 <div>
-                  <p className="font-medium">{menu.client_name}</p>
+                  <p className="font-medium">{menu.client.name}</p>
                   <p className="text-sm text-muted-foreground">
-                    {menu.week_label || new Date(menu.created_at).toLocaleDateString()} &middot; {menu.item_count} items
+                    {menu.weekLabel || menu.createdAt.toLocaleDateString()} &middot; {menu._count.items} items
                   </p>
                 </div>
               </Link>
