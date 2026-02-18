@@ -8,6 +8,6 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const items = await generateGroceryItemsFromMenu(id);
-  return NextResponse.json(items);
+  const result = await generateGroceryItemsFromMenu(id);
+  return NextResponse.json(result);
 }

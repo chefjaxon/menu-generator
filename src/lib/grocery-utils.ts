@@ -1,4 +1,5 @@
 import type { GroceryItem, DuplicatePair } from './types';
+import { INGREDIENT_ALIASES } from './ingredient-aliases';
 
 // --- Ingredient text parsing ---
 
@@ -198,4 +199,127 @@ export function consolidateExactDuplicates(items: GroceryItem[]): GroceryItem[] 
     }
   }
   return Array.from(seen.values());
+}
+
+// --- Ingredient name normalization ---
+
+/**
+ * Normalize a single ingredient name using the static alias table.
+ * Returns the canonical name if found; otherwise returns the trimmed, lowercased original.
+ * Pure function with no side effects.
+ */
+export function normalizeIngredientName(name: string): string {
+  const key = name.toLowerCase().trim();
+  return INGREDIENT_ALIASES.get(key) ?? key;
+}
+
+/**
+ * Apply alias normalization to a batch of GroceryItems.
+ * Returns a new array with `.name` replaced by the canonical form where a match exists.
+ * All other fields are preserved unchanged.
+ */
+export function normalizeIngredientNames(items: GroceryItem[]): GroceryItem[] {
+  return items.map((item) => ({
+    ...item,
+    name: normalizeIngredientName(item.name),
+  }));
+}
+
+// In-process cache for Claude gray-zone decisions. Ephemeral (resets on server restart).
+// Keyed on sorted pair of canonical names so order doesn't matter.
+const grayZoneCache = new Map<string, boolean>();
+
+function grayZoneCacheKey(nameA: string, nameB: string): string {
+  return [nameA, nameB].sort().join('|||');
+}
+
+/**
+ * Ask Claude Haiku whether two ingredient names should be treated as the same item.
+ * Returns true = merge, false = keep separate (including on any error/timeout).
+ * Times out after 5 seconds to never block generation.
+ * MUST only be called server-side; requires ANTHROPIC_API_KEY env var.
+ */
+async function askClaudeToMerge(nameA: string, nameB: string): Promise<boolean> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return false;
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 10,
+        messages: [
+          {
+            role: 'user',
+            content: `You are helping consolidate a grocery list. Should these two ingredient names be treated as the same item and merged?\n\nItem A: "${nameA}"\nItem B: "${nameB}"\n\nReply with only "yes" or "no".`,
+          },
+        ],
+      }),
+    });
+
+    clearTimeout(timeout);
+    if (!response.ok) return false;
+
+    const data = await response.json();
+    const text: string = data?.content?.[0]?.text ?? '';
+    return text.trim().toLowerCase().startsWith('yes');
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * For items that are still distinct after alias normalization but have
+ * 0.7 <= similarity < 0.8 (gray zone), ask Claude whether they should merge.
+ *
+ * Returns a new items array with names rewritten where Claude agreed to merge.
+ * On any failure (no API key, network error, timeout) returns the original array unchanged.
+ *
+ * IMPORTANT: Server-side only. Never call from client components.
+ */
+export async function applyClaudeGrayZoneNormalization(
+  items: GroceryItem[]
+): Promise<GroceryItem[]> {
+  const names = items.map((i) => i.name);
+
+  // Find gray-zone pairs
+  const renameMap = new Map<string, string>(); // lowerCase(nameB) -> nameA canonical
+
+  for (let i = 0; i < names.length; i++) {
+    for (let j = i + 1; j < names.length; j++) {
+      const sim = nameSimilarity(names[i], names[j]);
+      if (sim < 0.7 || sim >= 0.8) continue;
+
+      const cacheKey = grayZoneCacheKey(names[i], names[j]);
+      let shouldMerge: boolean;
+
+      if (grayZoneCache.has(cacheKey)) {
+        shouldMerge = grayZoneCache.get(cacheKey)!;
+      } else {
+        shouldMerge = await askClaudeToMerge(names[i], names[j]);
+        grayZoneCache.set(cacheKey, shouldMerge);
+      }
+
+      if (shouldMerge) {
+        renameMap.set(names[j].toLowerCase().trim(), names[i]);
+      }
+    }
+  }
+
+  if (renameMap.size === 0) return items;
+
+  return items.map((item) => {
+    const canonical = renameMap.get(item.name.toLowerCase().trim());
+    return canonical ? { ...item, name: canonical } : item;
+  });
 }

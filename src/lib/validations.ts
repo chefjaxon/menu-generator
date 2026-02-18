@@ -100,3 +100,7 @@ export const groceryMergeSchema = z.object({
 export const parsePasteSchema = z.object({
   text: z.string().max(50000),
 });
+
+export const groceryRestoreSchema = z.object({
+  itemId: z.string().min(1),
+});

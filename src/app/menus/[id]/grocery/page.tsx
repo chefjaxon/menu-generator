@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { getMenuById } from '@/lib/queries/menus';
-import { getGroceryItemsForMenu } from '@/lib/queries/grocery';
+import { getGroceryItemsForMenu, getRemovedItemsForMenu } from '@/lib/queries/grocery';
 import { GroceryPageClient } from '@/components/grocery/GroceryPageClient';
 
 export default async function GroceryPage({
@@ -11,9 +11,10 @@ export default async function GroceryPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [menu, groceryItems] = await Promise.all([
+  const [menu, groceryItems, removedItems] = await Promise.all([
     getMenuById(id),
     getGroceryItemsForMenu(id),
+    getRemovedItemsForMenu(id),
   ]);
 
   if (!menu) {
@@ -38,7 +39,7 @@ export default async function GroceryPage({
         </p>
       </div>
 
-      <GroceryPageClient menu={menu} initialGroceryItems={groceryItems} />
+      <GroceryPageClient menu={menu} initialGroceryItems={groceryItems} initialRemovedItems={removedItems} />
     </div>
   );
 }

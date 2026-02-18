@@ -70,7 +70,7 @@ export interface MenuItem {
   recipe?: Recipe;
 }
 
-export type GrocerySource = 'recipe' | 'manual';
+export type GrocerySource = 'recipe' | 'manual' | 'removed';
 
 export interface GroceryItem {
   id: string;
@@ -84,6 +84,18 @@ export interface GroceryItem {
   notes: string | null;
   sortOrder: number;
   createdAt: string;
+}
+
+export interface RemovedItem {
+  id: string;
+  menuId: string;
+  name: string;
+  recipeItemId: string | null;
+}
+
+export interface GenerateGroceryResponse {
+  items: GroceryItem[];
+  removedItems: RemovedItem[];
 }
 
 export interface DuplicatePair {

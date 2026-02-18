@@ -1,20 +1,23 @@
 'use client';
 
 import { useState } from 'react';
-import type { Menu, GroceryItem } from '@/lib/types';
+import type { Menu, GroceryItem, RemovedItem } from '@/lib/types';
 import { findDuplicatePairs } from '@/lib/grocery-utils';
 import { ClientSelectionSection } from './ClientSelectionSection';
 import { GroceryListSection } from './GroceryListSection';
 import { PastePanelSection } from './PastePanelSection';
+import { RemovedItemsPanel } from './RemovedItemsPanel';
 
 interface Props {
   menu: Menu;
   initialGroceryItems: GroceryItem[];
+  initialRemovedItems: RemovedItem[];
 }
 
-export function GroceryPageClient({ menu, initialGroceryItems }: Props) {
+export function GroceryPageClient({ menu, initialGroceryItems, initialRemovedItems }: Props) {
   const [menuItems, setMenuItems] = useState(menu.items);
   const [groceryItems, setGroceryItems] = useState<GroceryItem[]>(initialGroceryItems);
+  const [removedItems, setRemovedItems] = useState<RemovedItem[]>(initialRemovedItems);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
 
@@ -46,8 +49,9 @@ export function GroceryPageClient({ menu, initialGroceryItems }: Props) {
         method: 'POST',
       });
       if (!res.ok) throw new Error('Generate failed');
-      const items: GroceryItem[] = await res.json();
+      const { items, removedItems: removed } = await res.json();
       setGroceryItems(items);
+      setRemovedItems(removed);
     } catch {
       setError('Failed to generate grocery list. Please try again.');
     } finally {
@@ -103,6 +107,19 @@ export function GroceryPageClient({ menu, initialGroceryItems }: Props) {
     }
   }
 
+  async function handleRestoreItem(itemId: string) {
+    const res = await fetch(`/api/menus/${menu.id}/grocery/restore`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemId }),
+    });
+    if (res.ok) {
+      const restored: GroceryItem = await res.json();
+      setRemovedItems((prev) => prev.filter((i) => i.id !== itemId));
+      setGroceryItems((prev) => [...prev, restored]);
+    }
+  }
+
   async function handleAddParsedItems(
     parsed: Array<{ name: string; quantity: string | null; unit: string | null }>
   ) {
@@ -142,6 +159,11 @@ export function GroceryPageClient({ menu, initialGroceryItems }: Props) {
         onUpdate={handleUpdateItem}
         onDelete={handleDeleteItem}
         onMerge={handleMerge}
+      />
+
+      <RemovedItemsPanel
+        items={removedItems}
+        onRestore={handleRestoreItem}
       />
 
       <PastePanelSection
