@@ -4,4 +4,4 @@ data
 .DS_Store
 *.md
 .git
-.env*.local
+.env*
