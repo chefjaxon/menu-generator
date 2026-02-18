@@ -71,9 +71,372 @@ export function parsePastedText(text: string): ParsedIngredientLine[] {
 // --- Quantity math ---
 
 /**
- * Attempt to sum two quantity strings.
- * Same unit + numeric quantities: sum them.
- * Differing units OR non-numeric: concatenate with " + ".
+ * Parse a quantity string into a decimal number.
+ * Handles integers ("3"), decimals ("1.5"), simple fractions ("1/2", "3/4"),
+ * and mixed numbers ("1 1/2", "2 3/4").
+ * Returns null if unparseable.
+ */
+function parseQuantity(qty: string): number | null {
+  if (!qty) return null;
+  const trimmed = qty.trim();
+
+  // Mixed number: "1 1/2", "2 3/4"
+  const mixed = trimmed.match(/^(\d+)\s+(\d+)\/(\d+)$/);
+  if (mixed) {
+    const whole = parseInt(mixed[1], 10);
+    const num = parseInt(mixed[2], 10);
+    const den = parseInt(mixed[3], 10);
+    if (den === 0) return null;
+    return whole + num / den;
+  }
+
+  // Simple fraction: "1/2", "3/4"
+  const fraction = trimmed.match(/^(\d+)\/(\d+)$/);
+  if (fraction) {
+    const num = parseInt(fraction[1], 10);
+    const den = parseInt(fraction[2], 10);
+    if (den === 0) return null;
+    return num / den;
+  }
+
+  // Integer or decimal
+  const num = parseFloat(trimmed);
+  return isNaN(num) ? null : num;
+}
+
+/**
+ * Format a decimal number as a clean fraction/mixed-number string.
+ * Uses common cooking fractions (½ ¼ ¾ ⅓ ⅔ ⅛ ¾).
+ * e.g. 0.5 → "½", 1.75 → "1¾", 2.333 → "2⅓", 3 → "3"
+ */
+function formatQuantity(value: number): string {
+  if (value <= 0) return '0';
+
+  const whole = Math.floor(value);
+  const frac = value - whole;
+
+  // Tolerance for floating point
+  const TOLERANCE = 0.02;
+
+  const FRACTIONS: Array<[number, string]> = [
+    [0,     ''],
+    [1/8,   '⅛'],
+    [1/4,   '¼'],
+    [1/3,   '⅓'],
+    [3/8,   '⅜'],
+    [1/2,   '½'],
+    [5/8,   '⅝'],
+    [2/3,   '⅔'],
+    [3/4,   '¾'],
+    [7/8,   '⅞'],
+    [1,     '1'], // rounds up to next whole
+  ];
+
+  // Find nearest fraction
+  let bestFrac = '';
+  let bestDiff = Infinity;
+  let roundUp = false;
+
+  for (const [fracVal, fracStr] of FRACTIONS) {
+    const diff = Math.abs(frac - fracVal);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      bestFrac = fracStr;
+      roundUp = fracStr === '1';
+    }
+  }
+
+  const displayWhole = roundUp ? whole + 1 : whole;
+  const displayFrac = roundUp ? '' : bestFrac;
+
+  if (displayWhole === 0) return displayFrac || '0';
+  if (!displayFrac) return String(displayWhole);
+  return `${displayWhole}${displayFrac}`;
+}
+
+// ── Unit conversion tables ────────────────────────────────────────────────────
+// All volumes converted to teaspoons (tsp) as base unit.
+// All weights converted to ounces (oz) as base unit.
+
+type UnitGroup = 'volume' | 'weight' | 'count';
+
+interface UnitInfo {
+  group: UnitGroup;
+  toBase: number;   // multiply qty by this to get base units
+  canonical: string; // canonical unit name for this unit
+}
+
+const UNIT_TABLE: Record<string, UnitInfo> = {
+  // ── Volume (base = tsp) ──────────────────────────────────────────────────
+  'tsp':         { group: 'volume', toBase: 1,    canonical: 'tsp' },
+  'teaspoon':    { group: 'volume', toBase: 1,    canonical: 'tsp' },
+  'teaspoons':   { group: 'volume', toBase: 1,    canonical: 'tsp' },
+  'tbsp':        { group: 'volume', toBase: 3,    canonical: 'tbsp' },
+  'tablespoon':  { group: 'volume', toBase: 3,    canonical: 'tbsp' },
+  'tablespoons': { group: 'volume', toBase: 3,    canonical: 'tbsp' },
+  'fl oz':       { group: 'volume', toBase: 6,    canonical: 'fl oz' },
+  'cup':         { group: 'volume', toBase: 48,   canonical: 'cup' },
+  'cups':        { group: 'volume', toBase: 48,   canonical: 'cup' },
+  'pint':        { group: 'volume', toBase: 96,   canonical: 'pint' },
+  'pints':       { group: 'volume', toBase: 96,   canonical: 'pint' },
+  'quart':       { group: 'volume', toBase: 192,  canonical: 'quart' },
+  'quarts':      { group: 'volume', toBase: 192,  canonical: 'quart' },
+  'gallon':      { group: 'volume', toBase: 768,  canonical: 'gallon' },
+  'gallons':     { group: 'volume', toBase: 768,  canonical: 'gallon' },
+  'ml':          { group: 'volume', toBase: 0.2029, canonical: 'ml' },
+  'l':           { group: 'volume', toBase: 202.9,  canonical: 'l' },
+  'liter':       { group: 'volume', toBase: 202.9,  canonical: 'l' },
+  'liters':      { group: 'volume', toBase: 202.9,  canonical: 'l' },
+
+  // ── Weight (base = oz) ───────────────────────────────────────────────────
+  'oz':          { group: 'weight', toBase: 1,      canonical: 'oz' },
+  'ounce':       { group: 'weight', toBase: 1,      canonical: 'oz' },
+  'ounces':      { group: 'weight', toBase: 1,      canonical: 'oz' },
+  'lb':          { group: 'weight', toBase: 16,     canonical: 'lb' },
+  'lbs':         { group: 'weight', toBase: 16,     canonical: 'lb' },
+  'pound':       { group: 'weight', toBase: 16,     canonical: 'lb' },
+  'pounds':      { group: 'weight', toBase: 16,     canonical: 'lb' },
+  'g':           { group: 'weight', toBase: 0.03527, canonical: 'g' },
+  'gram':        { group: 'weight', toBase: 0.03527, canonical: 'g' },
+  'grams':       { group: 'weight', toBase: 0.03527, canonical: 'g' },
+  'kg':          { group: 'weight', toBase: 35.27,   canonical: 'kg' },
+
+  // ── Count (base = each) ──────────────────────────────────────────────────
+  'clove':       { group: 'count', toBase: 1, canonical: 'clove' },
+  'cloves':      { group: 'count', toBase: 1, canonical: 'clove' },
+  'head':        { group: 'count', toBase: 1, canonical: 'head' },
+  'heads':       { group: 'count', toBase: 1, canonical: 'head' },
+  'stalk':       { group: 'count', toBase: 1, canonical: 'stalk' },
+  'stalks':      { group: 'count', toBase: 1, canonical: 'stalk' },
+  'slice':       { group: 'count', toBase: 1, canonical: 'slice' },
+  'slices':      { group: 'count', toBase: 1, canonical: 'slice' },
+  'can':         { group: 'count', toBase: 1, canonical: 'can' },
+  'cans':        { group: 'count', toBase: 1, canonical: 'can' },
+  'package':     { group: 'count', toBase: 1, canonical: 'package' },
+  'packages':    { group: 'count', toBase: 1, canonical: 'package' },
+  'bag':         { group: 'count', toBase: 1, canonical: 'bag' },
+  'bags':        { group: 'count', toBase: 1, canonical: 'bag' },
+  'bunch':       { group: 'count', toBase: 1, canonical: 'bunch' },
+  'bunches':     { group: 'count', toBase: 1, canonical: 'bunch' },
+  'pinch':       { group: 'count', toBase: 1, canonical: 'pinch' },
+  'pinches':     { group: 'count', toBase: 1, canonical: 'pinch' },
+  'handful':     { group: 'count', toBase: 1, canonical: 'handful' },
+  'handfuls':    { group: 'count', toBase: 1, canonical: 'handful' },
+  'piece':       { group: 'count', toBase: 1, canonical: 'piece' },
+  'pieces':      { group: 'count', toBase: 1, canonical: 'piece' },
+  'sprig':       { group: 'count', toBase: 1, canonical: 'sprig' },
+  'sprigs':      { group: 'count', toBase: 1, canonical: 'sprig' },
+};
+
+/**
+ * Volume: convert a total-tsp value back to the most readable representation.
+ *
+ * Unit selection rules (cooking-friendly):
+ *  - Use tsp  when total < 3 tsp
+ *  - Use tbsp when total < 48 tsp (< 1 cup) — expressed as whole+fraction tbsp or tbsp+tsp
+ *  - Use cup  when total < 192 tsp (< 1 quart)
+ *  - Use quart when total < 768 tsp (< 1 gallon)
+ *  - Use gallon otherwise
+ *
+ * Within each tier: try clean single fraction first, then whole + remainder.
+ *
+ * Examples:
+ *   0.75 tsp → ¾ tsp
+ *   3 tsp    → 1 tbsp
+ *   7 tsp    → 2 tbsp + 1 tsp
+ *   12 tsp   → ¼ cup
+ *   36 tsp   → ¾ cup
+ *   54 tsp   → 1 cup + 2 tbsp
+ *   168 tsp  → 3½ cups
+ */
+function formatVolume(totalTsp: number): { quantity: string; unit: string } {
+  // Pick primary unit tier based on total size
+  let primaryUnit: string;
+  let primaryTsp: number;
+  let secondaryUnit: string;
+  let secondaryTsp: number;
+
+  if (totalTsp < 3 - 0.01) {
+    // Small: use tsp only
+    return { quantity: formatQuantity(totalTsp), unit: 'tsp' };
+  } else if (totalTsp < 12 - 0.01) {
+    // Tablespoon tier (< ¼ cup): use tbsp + tsp remainder
+    // But only express as fractional tbsp if it's a clean half (1½ tbsp)
+    // otherwise use tbsp + tsp
+    const tbspQty = totalTsp / 3;
+    const wholeTbsp = Math.floor(tbspQty + 0.01);
+    const remTsp = Math.round((totalTsp - wholeTbsp * 3) * 1000) / 1000;
+    if (remTsp < 0.1) {
+      return { quantity: formatQuantity(wholeTbsp), unit: 'tbsp' };
+    }
+    // Try clean fraction of tbsp (only ½ tbsp = 1.5 tsp is cooking-sensible)
+    const fracTbsp = tbspQty - wholeTbsp;
+    if (Math.abs(fracTbsp - 0.5) < 0.04) {
+      return { quantity: formatQuantity(tbspQty), unit: 'tbsp' };
+    }
+    // Use tbsp + tsp
+    const remFormatted = formatQuantity(remTsp);
+    if (wholeTbsp === 0) {
+      return { quantity: remFormatted, unit: 'tsp' };
+    }
+    return { quantity: `${formatQuantity(wholeTbsp)} tbsp + ${remFormatted} tsp`, unit: '' };
+  } else if (totalTsp < 192 - 0.01) {
+    // Cup tier — but only if totalTsp is at least ¼ cup (12 tsp)
+    // Values between 12 and 48 that aren't clean cup fractions stay in tbsp tier
+    if (totalTsp < 48 - 0.01) {
+      // Try as clean cup fraction (¼, ⅓, ½, ⅔, ¾) — tight tolerance
+      const cupFrac = totalTsp / 48;
+      const formatted = formatQuantity(cupFrac);
+      const reparsed = parseQuantityFromFormatted(formatted);
+      if (reparsed !== null && reparsed > 0 && Math.abs(reparsed - cupFrac) < 0.015) {
+        return { quantity: formatted, unit: 'cup' };
+      }
+      // Not a clean cup fraction — fall back to tbsp + tsp
+      const tbspQty = totalTsp / 3;
+      const wholeTbsp = Math.floor(tbspQty + 0.01);
+      const remTsp = Math.round((totalTsp - wholeTbsp * 3) * 1000) / 1000;
+      if (remTsp < 0.1) return { quantity: formatQuantity(wholeTbsp), unit: 'tbsp' };
+      return { quantity: `${formatQuantity(wholeTbsp)} tbsp + ${formatQuantity(remTsp)} tsp`, unit: '' };
+    }
+    primaryUnit = 'cup'; primaryTsp = 48;
+    secondaryUnit = 'tbsp'; secondaryTsp = 3;
+  } else if (totalTsp < 768 - 0.01) {
+    // Quart tier
+    primaryUnit = 'quart'; primaryTsp = 192;
+    secondaryUnit = 'cup'; secondaryTsp = 48;
+  } else {
+    // Gallon tier
+    primaryUnit = 'gallon'; primaryTsp = 768;
+    secondaryUnit = 'quart'; secondaryTsp = 192;
+  }
+
+  const qtyInUnit = totalTsp / primaryTsp;
+  const wholeCount = Math.floor(qtyInUnit + 0.005);
+  const remainderTsp = Math.round((totalTsp - wholeCount * primaryTsp) * 1000) / 1000;
+
+  // If remainder is negligible, express as whole primary units
+  if (remainderTsp < 0.1) {
+    return { quantity: formatQuantity(wholeCount), unit: primaryUnit };
+  }
+
+  // If whole part is 0: try clean single fraction of primary unit
+  if (wholeCount === 0) {
+    const formatted = formatQuantity(qtyInUnit);
+    const reparsed = parseQuantityFromFormatted(formatted);
+    if (reparsed !== null && reparsed > 0 && Math.abs(reparsed - qtyInUnit) < 0.04) {
+      return { quantity: formatted, unit: primaryUnit };
+    }
+  }
+
+  // If whole part > 0: prefer fractional primary-unit form when the fraction
+  // is a meaningful cooking fraction (≥ ¼ of the primary unit).
+  // e.g. 1¼ cups, 1½ cups, 1¾ cups are clean; but "1⅛ cups" is NOT preferred
+  // over "1 cup + 2 tbsp" since ⅛ cup is a small remainder.
+  if (wholeCount > 0) {
+    const fracPart = qtyInUnit - wholeCount;
+    // Only use fractional form if fraction >= ¼ of primary unit (i.e. ≥ 12 tsp for cups)
+    const minFrac = 1 / 4;
+    if (fracPart >= minFrac - 0.01) {
+      const formatted = formatQuantity(qtyInUnit);
+      const reparsed = parseQuantityFromFormatted(formatted);
+      if (reparsed !== null && reparsed > 0 && Math.abs(reparsed - qtyInUnit) < 0.015) {
+        return { quantity: formatted, unit: primaryUnit };
+      }
+    }
+  }
+
+  // Whole primary + remainder in secondary
+  const remainderQty = remainderTsp / secondaryTsp;
+  const remainderFormatted = formatQuantity(remainderQty);
+
+  if (wholeCount === 0) {
+    return { quantity: remainderFormatted, unit: secondaryUnit };
+  }
+
+  return {
+    quantity: `${formatQuantity(wholeCount)} ${primaryUnit} + ${remainderFormatted} ${secondaryUnit}`,
+    unit: '',
+  };
+}
+
+/** Parse back a formatQuantity result (handles unicode fractions) */
+function parseQuantityFromFormatted(s: string): number | null {
+  const UNICODE: Record<string, number> = {
+    '⅛': 1/8, '¼': 1/4, '⅓': 1/3, '⅜': 3/8,
+    '½': 1/2, '⅝': 5/8, '⅔': 2/3, '¾': 3/4, '⅞': 7/8,
+  };
+  let value = 0;
+  let str = s.trim();
+  // Whole number prefix
+  const wholeMatch = str.match(/^(\d+)/);
+  if (wholeMatch) {
+    value += parseInt(wholeMatch[1], 10);
+    str = str.slice(wholeMatch[0].length);
+  }
+  // Unicode fraction suffix
+  if (str && UNICODE[str] !== undefined) {
+    value += UNICODE[str];
+  } else if (str) {
+    return null; // unknown suffix
+  }
+  return value;
+}
+
+/**
+ * Weight: convert a total-oz value back to the cleanest representation.
+ */
+function formatWeight(totalOz: number): { quantity: string; unit: string } {
+  if (totalOz >= 16) {
+    const lbs = totalOz / 16;
+    const wholeLbs = Math.floor(lbs);
+    const remOz = Math.round((lbs - wholeLbs) * 16);
+    if (remOz === 0) {
+      return { quantity: formatQuantity(wholeLbs), unit: 'lb' };
+    }
+    return { quantity: `${formatQuantity(wholeLbs)} lb + ${formatQuantity(remOz)} oz`, unit: '' };
+  }
+  return { quantity: formatQuantity(totalOz), unit: 'oz' };
+}
+
+/**
+ * Parse a multi-part volume string (result of a prior formatVolume call) back to tsp.
+ * Handles strings like "1 cup + 2 tbsp", "3 tbsp + 1 tsp", "2¼ cups", "1½ tbsp".
+ * Returns null if the string doesn't look like a volume expression.
+ */
+function parseMultiPartVolumeTsp(s: string): number | null {
+  let totalTsp = 0;
+  let matched = false;
+
+  // Split on " + " to handle multi-part strings
+  const parts = s.split(/\s*\+\s*/);
+  for (const part of parts) {
+    const trimmed = part.trim();
+    // Match: optional unicode fraction + space + unit (e.g. "1½ cups", "2 tbsp", "¾ tsp")
+    const m = trimmed.match(/^([0-9⅛¼⅓⅜½⅝⅔¾⅞]+(?:\s+\d+\/\d+)?)\s+(\w+)$/);
+    if (!m) return null;
+    const qty = parseQuantityFromFormatted(m[1]) ?? parseQuantity(m[1]);
+    if (qty === null) return null;
+    const info = UNIT_TABLE[m[2].toLowerCase()];
+    if (!info || info.group !== 'volume') return null;
+    totalTsp += qty * info.toBase;
+    matched = true;
+  }
+  return matched ? totalTsp : null;
+}
+
+/**
+ * Attempt to sum two quantity+unit pairs with full unit conversion.
+ *
+ * Supports:
+ *  - Same unit: direct sum (e.g. 2 cups + 1 cup = 3 cups)
+ *  - Compatible volume units: converts to tsp base, formats result cleanly
+ *    (e.g. 2 tbsp + 1 tsp = 7 tsp → "2 tbsp + 1 tsp")
+ *  - Compatible weight units: converts to oz base
+ *    (e.g. 1 lb + 8 oz = 24 oz → "1 lb + 8 oz")
+ *  - Count units (cloves, cans, etc.): sums when canonical unit matches
+ *  - Unit-less quantities: sums numerically when both are unit-less
+ *  - Incompatible units or unparseable quantities: concatenates with " + "
+ *
  * Never silently discards data.
  */
 export function combineQuantities(
@@ -82,25 +445,95 @@ export function combineQuantities(
   qtyB: string | null,
   unitB: string | null
 ): { quantity: string | null; unit: string | null } {
-  const numA = qtyA ? parseFloat(qtyA) : null;
-  const numB = qtyB ? parseFloat(qtyB) : null;
+  const normalA = (unitA ?? '').toLowerCase().trim();
+  const normalB = (unitB ?? '').toLowerCase().trim();
 
-  const sameUnit =
-    (unitA ?? '').toLowerCase().trim() === (unitB ?? '').toLowerCase().trim();
+  const numA = qtyA ? parseQuantity(qtyA) : null;
+  const numB = qtyB ? parseQuantity(qtyB) : null;
 
-  if (
-    numA !== null && !isNaN(numA) &&
-    numB !== null && !isNaN(numB) &&
-    sameUnit
-  ) {
-    const sum = numA + numB;
-    const formatted = Number.isInteger(sum)
-      ? String(sum)
-      : sum.toFixed(2).replace(/\.?0+$/, '');
-    return { quantity: formatted, unit: unitA };
+  const infoA = normalA ? UNIT_TABLE[normalA] : null;
+  const infoB = normalB ? UNIT_TABLE[normalB] : null;
+
+  // ── Both have no unit: sum numerically if possible ────────────────────────
+  if (!normalA && !normalB) {
+    if (numA !== null && numB !== null) {
+      return { quantity: formatQuantity(numA + numB), unit: null };
+    }
+    // One or both may be a multi-part volume string like "1 tbsp + 2¾ tsp"
+    // Try to parse them as tsp and add
+    const tspA = qtyA ? parseMultiPartVolumeTsp(qtyA) : null;
+    const tspB = qtyB ? parseMultiPartVolumeTsp(qtyB) : null;
+    if (tspA !== null && tspB !== null) {
+      const result = formatVolume(tspA + tspB);
+      return { quantity: result.quantity, unit: result.unit || null };
+    }
+    // Fall through to concatenation
   }
 
-  // Cannot cleanly sum: concatenate both representations
+  // ── One side is a multi-part volume string (null unit), other has volume unit ─
+  // e.g. "1 cup + 2 tbsp" (null) + "1/4 cup" (cup) → sum all as tsp
+  if (numB !== null && infoB && infoB.group === 'volume' && !normalA && qtyA) {
+    const tspA = parseMultiPartVolumeTsp(qtyA);
+    if (tspA !== null) {
+      const result = formatVolume(tspA + numB * infoB.toBase);
+      return { quantity: result.quantity, unit: result.unit || null };
+    }
+  }
+  if (numA !== null && infoA && infoA.group === 'volume' && !normalB && qtyB) {
+    const tspB = parseMultiPartVolumeTsp(qtyB);
+    if (tspB !== null) {
+      const result = formatVolume(numA * infoA.toBase + tspB);
+      return { quantity: result.quantity, unit: result.unit || null };
+    }
+  }
+
+  // ── One side has a count unit, the other has no unit: treat as same count ─
+  // e.g. "8 cloves" + "2" (bare) → "10 cloves"
+  if (numA !== null && numB !== null) {
+    if (infoA && infoA.group === 'count' && !normalB) {
+      const sum = numA * infoA.toBase + numB;
+      const pluralUnit = sum === 1 ? infoA.canonical : infoA.canonical + 's';
+      return { quantity: formatQuantity(sum), unit: pluralUnit };
+    }
+    if (infoB && infoB.group === 'count' && !normalA) {
+      const sum = numA + numB * infoB.toBase;
+      const pluralUnit = sum === 1 ? infoB.canonical : infoB.canonical + 's';
+      return { quantity: formatQuantity(sum), unit: pluralUnit };
+    }
+  }
+
+  // ── Both units are in the same conversion group ───────────────────────────
+  if (infoA && infoB && infoA.group === infoB.group && numA !== null && numB !== null) {
+    const baseA = numA * infoA.toBase;
+    const baseB = numB * infoB.toBase;
+    const total = baseA + baseB;
+
+    if (infoA.group === 'volume') {
+      const result = formatVolume(total);
+      return { quantity: result.quantity, unit: result.unit || null };
+    }
+
+    if (infoA.group === 'weight') {
+      const result = formatWeight(total);
+      return { quantity: result.quantity, unit: result.unit || null };
+    }
+
+    if (infoA.group === 'count') {
+      // Only sum if same canonical unit (cloves + cloves, not cloves + cans)
+      if (infoA.canonical === infoB.canonical) {
+        const sum = total;
+        const pluralUnit = sum === 1 ? infoA.canonical : infoA.canonical + 's';
+        return { quantity: formatQuantity(sum), unit: pluralUnit };
+      }
+    }
+  }
+
+  // ── Same unit, numeric quantities ─────────────────────────────────────────
+  if (normalA === normalB && numA !== null && numB !== null) {
+    return { quantity: formatQuantity(numA + numB), unit: unitA };
+  }
+
+  // ── Cannot cleanly convert: concatenate ───────────────────────────────────
   const partA = [qtyA, unitA].filter(Boolean).join(' ');
   const partB = [qtyB, unitB].filter(Boolean).join(' ');
 
