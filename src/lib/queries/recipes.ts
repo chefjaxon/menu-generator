@@ -12,7 +12,16 @@ function mapRecipe(row: {
   servingSize: number;
   createdAt: Date;
   updatedAt: Date;
-  ingredients: Array<{ id: string; name: string; quantity: string | null; unit: string | null; role: string; sortOrder: number; recipeId: string }>;
+  ingredients: Array<{
+    id: string;
+    name: string;
+    quantity: string | null;
+    unit: string | null;
+    role: string;
+    sortOrder: number;
+    recipeId: string;
+    swaps: Array<{ id: string; substituteIngredient: string; restriction: string; recipeIngredientId: string }>;
+  }>;
   proteinSwaps: Array<{ protein: string }>;
   tags: Array<{ tag: string }>;
 }): Recipe {
@@ -32,6 +41,11 @@ function mapRecipe(row: {
       quantity: i.quantity,
       unit: i.unit,
       role: (i.role as IngredientRole) ?? 'core',
+      swaps: i.swaps.map((s) => ({
+        id: s.id,
+        substituteIngredient: s.substituteIngredient,
+        restriction: s.restriction,
+      })),
       sortOrder: i.sortOrder,
     })),
     proteinSwaps: row.proteinSwaps.map((p) => p.protein),
@@ -40,7 +54,10 @@ function mapRecipe(row: {
 }
 
 const recipeInclude = {
-  ingredients: { orderBy: { sortOrder: 'asc' as const } },
+  ingredients: {
+    orderBy: { sortOrder: 'asc' as const },
+    include: { swaps: true },
+  },
   proteinSwaps: true,
   tags: true,
 };
@@ -82,13 +99,21 @@ export interface RecipeInput {
   cuisineType: string;
   itemType: string;
   servingSize: number;
-  ingredients: Array<{ name: string; quantity?: string; unit?: string; role?: IngredientRole }>;
+  ingredients: Array<{
+    name: string;
+    quantity?: string;
+    unit?: string;
+    role?: IngredientRole;
+    swaps?: Array<{ substituteIngredient: string; restriction: string }>;
+  }>;
   proteinSwaps: string[];
   tags: string[];
 }
 
 export async function createRecipe(data: RecipeInput): Promise<Recipe> {
   const id = nanoid();
+
+  // Create recipe with ingredients (without swaps first, then add swaps after to get ingredient IDs)
   await prisma.recipe.create({
     data: {
       id,
@@ -116,6 +141,30 @@ export async function createRecipe(data: RecipeInput): Promise<Recipe> {
       },
     },
   });
+
+  // Add swaps — fetch the newly created ingredient IDs ordered by sortOrder
+  const swapsToCreate: Array<{ id: string; recipeIngredientId: string; substituteIngredient: string; restriction: string }> = [];
+  const createdIngredients = await prisma.recipeIngredient.findMany({
+    where: { recipeId: id },
+    orderBy: { sortOrder: 'asc' },
+  });
+  for (let i = 0; i < data.ingredients.length; i++) {
+    const ing = data.ingredients[i];
+    const dbIng = createdIngredients[i];
+    if (!dbIng || !ing.swaps?.length) continue;
+    for (const swap of ing.swaps) {
+      swapsToCreate.push({
+        id: nanoid(),
+        recipeIngredientId: dbIng.id,
+        substituteIngredient: swap.substituteIngredient,
+        restriction: swap.restriction,
+      });
+    }
+  }
+  if (swapsToCreate.length > 0) {
+    await prisma.ingredientSwap.createMany({ data: swapsToCreate });
+  }
+
   return (await getRecipeById(id))!;
 }
 
@@ -123,6 +172,7 @@ export async function updateRecipe(id: string, data: RecipeInput): Promise<Recip
   const existing = await prisma.recipe.findUnique({ where: { id }, select: { id: true } });
   if (!existing) return null;
 
+  // Delete and recreate ingredients (swaps cascade-delete with ingredients)
   await prisma.$transaction([
     prisma.recipe.update({
       where: { id },
@@ -156,6 +206,29 @@ export async function updateRecipe(id: string, data: RecipeInput): Promise<Recip
       data: data.tags.map((tag) => ({ id: nanoid(), recipeId: id, tag })),
     }),
   ]);
+
+  // Add swaps after transaction (need freshly created ingredient IDs)
+  const swapsToCreate: Array<{ id: string; recipeIngredientId: string; substituteIngredient: string; restriction: string }> = [];
+  const createdIngredients = await prisma.recipeIngredient.findMany({
+    where: { recipeId: id },
+    orderBy: { sortOrder: 'asc' },
+  });
+  for (let i = 0; i < data.ingredients.length; i++) {
+    const ing = data.ingredients[i];
+    const dbIng = createdIngredients[i];
+    if (!dbIng || !ing.swaps?.length) continue;
+    for (const swap of ing.swaps) {
+      swapsToCreate.push({
+        id: nanoid(),
+        recipeIngredientId: dbIng.id,
+        substituteIngredient: swap.substituteIngredient,
+        restriction: swap.restriction,
+      });
+    }
+  }
+  if (swapsToCreate.length > 0) {
+    await prisma.ingredientSwap.createMany({ data: swapsToCreate });
+  }
 
   return getRecipeById(id);
 }

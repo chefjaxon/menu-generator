@@ -35,9 +35,21 @@ model RecipeIngredient {
   role      String  @default("core")
   sortOrder Int     @map("sort_order") @default(0)
 
-  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  recipe Recipe           @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  swaps  IngredientSwap[]
 
   @@map("recipe_ingredients")
+}
+
+model IngredientSwap {
+  id                   String @id
+  recipeIngredientId   String @map("recipe_ingredient_id")
+  substituteIngredient String @map("substitute_ingredient")
+  restriction          String
+
+  ingredient RecipeIngredient @relation(fields: [recipeIngredientId], references: [id], onDelete: Cascade)
+
+  @@map("ingredient_swaps")
 }
 
 model RecipeProteinSwap {

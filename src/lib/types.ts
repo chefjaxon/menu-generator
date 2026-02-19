@@ -14,7 +14,13 @@ export const COMMON_EXCLUSIONS: string[] = [
   'cod', 'salmon', 'shrimp',
 ];
 
-export type IngredientRole = 'core' | 'optional' | 'garnish';
+export type IngredientRole = 'core' | 'optional';
+
+export interface IngredientSwap {
+  id: string;
+  substituteIngredient: string;
+  restriction: string;
+}
 
 export interface Ingredient {
   id: string;
@@ -22,6 +28,7 @@ export interface Ingredient {
   quantity: string | null;
   unit: string | null;
   role: IngredientRole;
+  swaps: IngredientSwap[];
   sortOrder: number;
 }
 

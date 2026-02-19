@@ -38,10 +38,19 @@ function checkIngredientEligibility(recipe: Recipe, clientExclusions: string[]):
     for (const exclusion of clientExclusions) {
       const exNorm = exclusion.toLowerCase().trim();
       if (nameNorm.includes(exNorm) || exNorm.includes(nameNorm)) {
-        if (ingredient.role === 'core') {
-          return { eligible: false };
+        if (ingredient.role === 'optional') {
+          omitNotes.push(`Omit ${ingredient.name} (${exclusion})`);
+          continue;
         }
-        omitNotes.push(`Omit ${ingredient.name} (${exclusion})`);
+        // core ingredient — check for an approved swap for this restriction
+        const swap = ingredient.swaps.find(
+          (s) => s.restriction.toLowerCase().trim() === exNorm
+        );
+        if (swap) {
+          omitNotes.push(`Swap ${ingredient.name} → ${swap.substituteIngredient} (${exclusion})`);
+        } else {
+          return { eligible: false };  // core, no swap → hard block
+        }
       }
     }
   }

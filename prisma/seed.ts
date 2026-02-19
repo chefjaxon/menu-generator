@@ -1,7 +1,10 @@
+import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
 import { nanoid } from 'nanoid';
 
-const prisma = new PrismaClient();
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
   const defaults = [
@@ -22,6 +25,19 @@ async function main() {
   }
 
   console.log('Seeded default proteins.');
+
+  // Create default admin user (password: changeme)
+  await prisma.user.upsert({
+    where: { username: 'admin' },
+    update: {},
+    create: {
+      id: nanoid(),
+      username: 'admin',
+      passwordHash: '$2b$12$.mbYnevkNJXimfOZ.DzDI.2b2dqagJvKU4NOcCPzYhE9vSKe8xxei',
+    },
+  });
+
+  console.log('Seeded default admin user.');
 }
 
 main()

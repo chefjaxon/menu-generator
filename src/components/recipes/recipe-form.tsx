@@ -7,11 +7,17 @@ import { CUISINE_TYPES, ITEM_TYPES, COMMON_EXCLUSIONS } from '@/lib/types';
 import { formatLabel } from '@/lib/utils';
 import type { Recipe, IngredientRole } from '@/lib/types';
 
+interface SwapField {
+  restriction: string;
+  substituteIngredient: string;
+}
+
 interface IngredientField {
   name: string;
   quantity: string;
   unit: string;
   role: IngredientRole;
+  swaps: SwapField[];
 }
 
 interface FormData {
@@ -26,11 +32,6 @@ interface FormData {
   tags: string[];
 }
 
-// Looser type for initialData so imported recipes (without role) are accepted
-interface InitialData extends Omit<Partial<FormData>, 'ingredients'> {
-  ingredients?: Array<{ name: string; quantity: string; unit: string; role?: IngredientRole }>;
-}
-
 // Common "contains" tag suggestions for recipes
 const RECIPE_TAG_SUGGESTIONS = [
   'dairy', 'gluten', 'nuts', 'soy', 'eggs', 'beef', 'pork', 'shellfish',
@@ -39,7 +40,11 @@ const RECIPE_TAG_SUGGESTIONS = [
   'white flour', 'white rice', 'fermented foods', 'coffee',
 ];
 
-export function RecipeForm({ recipe, initialData }: { recipe?: Recipe; initialData?: InitialData | null }) {
+function emptyIngredient(): IngredientField {
+  return { name: '', quantity: '', unit: '', role: 'core', swaps: [] };
+}
+
+export function RecipeForm({ recipe }: { recipe?: Recipe }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -54,25 +59,24 @@ export function RecipeForm({ recipe, initialData }: { recipe?: Recipe; initialDa
   }, []);
 
   const [form, setForm] = useState<FormData>({
-    name: initialData?.name ?? recipe?.name ?? '',
-    description: initialData?.description ?? recipe?.description ?? '',
-    instructions: initialData?.instructions ?? recipe?.instructions ?? '',
-    cuisineType: initialData?.cuisineType ?? recipe?.cuisineType ?? 'american',
-    itemType: initialData?.itemType ?? recipe?.itemType ?? 'meal',
-    servingSize: initialData?.servingSize ?? recipe?.servingSize ?? 1,
-    ingredients: initialData?.ingredients?.map((i) => ({
-      name: i.name,
-      quantity: i.quantity,
-      unit: i.unit,
-      role: i.role ?? 'core' as IngredientRole,
-    })) ?? recipe?.ingredients?.map((i) => ({
+    name: recipe?.name ?? '',
+    description: recipe?.description ?? '',
+    instructions: recipe?.instructions ?? '',
+    cuisineType: recipe?.cuisineType ?? 'american',
+    itemType: recipe?.itemType ?? 'meal',
+    servingSize: recipe?.servingSize ?? 1,
+    ingredients: recipe?.ingredients?.map((i) => ({
       name: i.name,
       quantity: i.quantity || '',
       unit: i.unit || '',
-      role: i.role ?? 'core' as IngredientRole,
-    })) ?? [{ name: '', quantity: '', unit: '', role: 'core' as IngredientRole }],
-    proteinSwaps: initialData?.proteinSwaps ?? recipe?.proteinSwaps ?? [],
-    tags: initialData?.tags ?? recipe?.tags ?? [],
+      role: (i.role === 'optional' ? 'optional' : 'core') as IngredientRole,
+      swaps: i.swaps?.map((s) => ({
+        restriction: s.restriction,
+        substituteIngredient: s.substituteIngredient,
+      })) ?? [],
+    })) ?? [emptyIngredient()],
+    proteinSwaps: recipe?.proteinSwaps ?? [],
+    tags: recipe?.tags ?? [],
   });
 
   function updateField<K extends keyof FormData>(key: K, value: FormData[K]) {
@@ -82,7 +86,7 @@ export function RecipeForm({ recipe, initialData }: { recipe?: Recipe; initialDa
   function addIngredient() {
     setForm((prev) => ({
       ...prev,
-      ingredients: [...prev.ingredients, { name: '', quantity: '', unit: '', role: 'core' as IngredientRole }],
+      ingredients: [...prev.ingredients, emptyIngredient()],
     }));
   }
 
@@ -93,11 +97,53 @@ export function RecipeForm({ recipe, initialData }: { recipe?: Recipe; initialDa
     }));
   }
 
-  function updateIngredient(index: number, field: keyof IngredientField, value: string | IngredientRole) {
+  function updateIngredient(index: number, field: keyof Omit<IngredientField, 'swaps'>, value: string) {
+    setForm((prev) => ({
+      ...prev,
+      ingredients: prev.ingredients.map((ing, i) => {
+        if (i !== index) return ing;
+        const updated = { ...ing, [field]: value };
+        // When switching to optional, clear swaps (swaps only make sense on core)
+        if (field === 'role' && value === 'optional') updated.swaps = [];
+        return updated;
+      }),
+    }));
+  }
+
+  function addSwap(ingIndex: number) {
     setForm((prev) => ({
       ...prev,
       ingredients: prev.ingredients.map((ing, i) =>
-        i === index ? { ...ing, [field]: value } : ing
+        i === ingIndex
+          ? { ...ing, swaps: [...ing.swaps, { restriction: '', substituteIngredient: '' }] }
+          : ing
+      ),
+    }));
+  }
+
+  function removeSwap(ingIndex: number, swapIndex: number) {
+    setForm((prev) => ({
+      ...prev,
+      ingredients: prev.ingredients.map((ing, i) =>
+        i === ingIndex
+          ? { ...ing, swaps: ing.swaps.filter((_, si) => si !== swapIndex) }
+          : ing
+      ),
+    }));
+  }
+
+  function updateSwap(ingIndex: number, swapIndex: number, field: keyof SwapField, value: string) {
+    setForm((prev) => ({
+      ...prev,
+      ingredients: prev.ingredients.map((ing, i) =>
+        i === ingIndex
+          ? {
+              ...ing,
+              swaps: ing.swaps.map((s, si) =>
+                si === swapIndex ? { ...s, [field]: value } : s
+              ),
+            }
+          : ing
       ),
     }));
   }
@@ -144,7 +190,10 @@ export function RecipeForm({ recipe, initialData }: { recipe?: Recipe; initialDa
 
     const payload = {
       ...form,
-      ingredients: filteredIngredients,
+      ingredients: filteredIngredients.map((ing) => ({
+        ...ing,
+        swaps: ing.swaps.filter((s) => s.restriction.trim() && s.substituteIngredient.trim()),
+      })),
     };
 
     try {
@@ -355,48 +404,91 @@ export function RecipeForm({ recipe, initialData }: { recipe?: Recipe; initialDa
             Add
           </button>
         </div>
-        <div className="space-y-2">
+        <div className="space-y-3">
           {form.ingredients.map((ing, i) => (
-            <div key={i} className="flex gap-2 items-center">
-              <input
-                type="text"
-                value={ing.name}
-                onChange={(e) => updateIngredient(i, 'name', e.target.value)}
-                placeholder="Ingredient name"
-                className="flex-1 px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-              <input
-                type="text"
-                value={ing.quantity}
-                onChange={(e) => updateIngredient(i, 'quantity', e.target.value)}
-                placeholder="Qty"
-                className="w-20 px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-              <input
-                type="text"
-                value={ing.unit}
-                onChange={(e) => updateIngredient(i, 'unit', e.target.value)}
-                placeholder="Unit"
-                className="w-20 px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-              <select
-                value={ing.role}
-                onChange={(e) => updateIngredient(i, 'role', e.target.value as IngredientRole)}
-                title="Ingredient role — determines if a recipe is excluded when a client has a restriction"
-                className="w-28 px-2 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring text-muted-foreground"
-              >
-                <option value="core">Core</option>
-                <option value="optional">Optional</option>
-                <option value="garnish">Garnish</option>
-              </select>
-              {form.ingredients.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => removeIngredient(i)}
-                  className="p-2 text-muted-foreground hover:text-destructive"
+            <div key={i} className="rounded-md border border-border p-3 space-y-2">
+              {/* Ingredient row */}
+              <div className="flex gap-2 items-center">
+                <input
+                  type="text"
+                  value={ing.name}
+                  onChange={(e) => updateIngredient(i, 'name', e.target.value)}
+                  placeholder="Ingredient name"
+                  className="flex-1 px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                <input
+                  type="text"
+                  value={ing.quantity}
+                  onChange={(e) => updateIngredient(i, 'quantity', e.target.value)}
+                  placeholder="Qty"
+                  className="w-20 px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                <input
+                  type="text"
+                  value={ing.unit}
+                  onChange={(e) => updateIngredient(i, 'unit', e.target.value)}
+                  placeholder="Unit"
+                  className="w-20 px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                <select
+                  value={ing.role}
+                  onChange={(e) => updateIngredient(i, 'role', e.target.value)}
+                  title="Core = recipe fails without it. Optional = can be omitted."
+                  className="w-28 px-2 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring text-muted-foreground"
                 >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                  <option value="core">Core</option>
+                  <option value="optional">Optional</option>
+                </select>
+                {form.ingredients.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeIngredient(i)}
+                    className="p-2 text-muted-foreground hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* Swaps — only shown for core ingredients */}
+              {ing.role === 'core' && (
+                <div className="pl-2 space-y-1.5">
+                  {ing.swaps.map((swap, si) => (
+                    <div key={si} className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground w-16 shrink-0">If restricted:</span>
+                      <input
+                        type="text"
+                        value={swap.restriction}
+                        onChange={(e) => updateSwap(i, si, 'restriction', e.target.value)}
+                        placeholder="e.g. dairy"
+                        className="w-28 px-2 py-1 border border-border rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-ring"
+                      />
+                      <span className="text-xs text-muted-foreground">→</span>
+                      <input
+                        type="text"
+                        value={swap.substituteIngredient}
+                        onChange={(e) => updateSwap(i, si, 'substituteIngredient', e.target.value)}
+                        placeholder="substitute ingredient"
+                        className="flex-1 px-2 py-1 border border-border rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-ring"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeSwap(i, si)}
+                        className="p-1 text-muted-foreground hover:text-destructive"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => addSwap(i)}
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    <Plus className="h-3 w-3" />
+                    Add swap
+                  </button>
+                </div>
               )}
             </div>
           ))}

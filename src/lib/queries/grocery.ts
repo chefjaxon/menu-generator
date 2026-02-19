@@ -192,23 +192,61 @@ export async function generateGroceryItemsFromMenu(menuId: string): Promise<Gene
     where: { menuId, clientSelected: true },
     include: {
       recipe: {
-        include: { ingredients: { orderBy: { sortOrder: 'asc' } } },
+        include: {
+          ingredients: {
+            orderBy: { sortOrder: 'asc' },
+            include: { swaps: true },
+          },
+        },
       },
     },
   });
 
-  // Build raw ingredient list from all selected recipes
-  // Skip optional/garnish ingredients that conflict with client restrictions
+  // Build raw ingredient list from all selected recipes.
+  // For restricted ingredients:
+  //   - optional: skip entirely
+  //   - core with a swap: push the substitute ingredient instead
+  //   - core without a swap: shouldn't reach here (recipe was filtered out), but skip defensively
   const rawItems: GroceryItem[] = [];
   let sortIdx = 0;
   for (const menuItem of menuItems) {
     for (const ing of menuItem.recipe.ingredients) {
-      if (clientRestrictions.length > 0 && ing.role !== 'core') {
+      if (clientRestrictions.length > 0) {
         const nameNorm = ing.name.toLowerCase().trim();
-        const isRestricted = clientRestrictions.some(
-          (r) => nameNorm.includes(r) || r.includes(nameNorm)
-        );
-        if (isRestricted) continue;
+        let restricted = false;
+        let appliedSwap: { substituteIngredient: string } | null = null;
+
+        for (const restriction of clientRestrictions) {
+          if (nameNorm.includes(restriction) || restriction.includes(nameNorm)) {
+            restricted = true;
+            if (ing.role === 'core') {
+              const swap = ing.swaps.find((s) => s.restriction.toLowerCase().trim() === restriction);
+              if (swap) appliedSwap = swap;
+            }
+            break;
+          }
+        }
+
+        if (restricted) {
+          if (appliedSwap) {
+            // Push the substitute ingredient in place of the original
+            rawItems.push({
+              id: nanoid(),
+              menuId,
+              name: appliedSwap.substituteIngredient,
+              quantity: ing.quantity,
+              unit: ing.unit,
+              checked: false,
+              source: 'recipe',
+              recipeItemId: ing.id,
+              notes: `Swap for ${ing.name}`,
+              sortOrder: sortIdx++,
+              createdAt: new Date().toISOString(),
+            });
+          }
+          // Whether optional (skipped) or core+swap (already pushed), skip the original
+          continue;
+        }
       }
       rawItems.push({
         id: nanoid(),
