@@ -34,7 +34,7 @@ body {
   /* Hide everything except the grocery list content */
   nav, aside, header,
   [data-sidebar], [data-print-hide],
-  .print\\:hidden {
+  [class~="print:hidden"] {
     display: none !important;
   }
 
