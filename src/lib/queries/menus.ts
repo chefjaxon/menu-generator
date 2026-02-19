@@ -356,14 +356,20 @@ export async function getMenusByClientId(clientId: string): Promise<Menu[]> {
   return getAllMenus(clientId);
 }
 
-export async function approveGroceryList(menuId: string): Promise<boolean> {
+export async function approveGroceryList(menuId: string): Promise<{ pantryToken: string } | null> {
   try {
+    // Preserve existing pantryToken if already generated; otherwise create one now
+    const existing = await prisma.menu.findUnique({
+      where: { id: menuId },
+      select: { pantryToken: true },
+    });
+    const pantryToken = existing?.pantryToken ?? nanoid(24);
     await prisma.menu.update({
       where: { id: menuId },
-      data: { groceryApproved: true },
+      data: { groceryApproved: true, pantryToken },
     });
-    return true;
+    return { pantryToken };
   } catch {
-    return false;
+    return null;
   }
 }

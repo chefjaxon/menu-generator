@@ -45,7 +45,12 @@ export function PublishControls({
     const res = await fetch(`/api/menus/${menuId}/approve-grocery`, { method: 'POST' });
     setApproving(false);
     if (res.ok) {
+      const data = await res.json();
       setGroceryApproved(true);
+      // Auto-set the pantry token so the link appears immediately
+      if (data.pantryToken && !pantryToken) {
+        setPantryToken(data.pantryToken);
+      }
     }
   }
 

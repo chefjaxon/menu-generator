@@ -12,11 +12,11 @@ export async function POST(
   }
 
   const { id } = await params;
-  const ok = await approveGroceryList(id);
+  const result = await approveGroceryList(id);
 
-  if (!ok) {
+  if (!result) {
     return NextResponse.json({ error: 'Failed to approve grocery list' }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, pantryToken: result.pantryToken });
 }
