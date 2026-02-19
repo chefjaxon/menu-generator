@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { ChefHat, Users, CalendarDays, LayoutDashboard, Plus, Sparkles, LogOut, Settings, ShoppingCart, Database } from 'lucide-react';
+import { ChefHat, Users, CalendarDays, LayoutDashboard, Plus, Sparkles, LogOut, Settings, ShoppingCart } from 'lucide-react';
 import { useState } from 'react';
 
 const navItems = [
@@ -11,8 +11,7 @@ const navItems = [
   { href: '/clients', label: 'Clients', icon: Users },
   { href: '/menus', label: 'Menu History', icon: CalendarDays },
   { href: '/grocery-lists', label: 'Grocery Lists', icon: ShoppingCart },
-  { href: '/admin/ingredient-import', label: 'Ingredient Import', icon: Database },
-  { href: '/settings', label: 'Settings', icon: Settings },
+{ href: '/settings', label: 'Settings', icon: Settings },
 ];
 
 export function Sidebar() {
