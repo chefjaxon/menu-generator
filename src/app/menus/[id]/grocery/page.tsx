@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import { getMenuById } from '@/lib/queries/menus';
 import { getGroceryItemsForMenu, getRemovedItemsForMenu } from '@/lib/queries/grocery';
 import { GroceryPageClient } from '@/components/grocery/GroceryPageClient';
+import { ApproveGroceryBanner } from '@/components/grocery/ApproveGroceryBanner';
 
 export default async function GroceryPage({
   params,
@@ -31,13 +32,17 @@ export default async function GroceryPage({
         Back to Menu
       </Link>
 
-      <div className="mb-6">
+      <div className="mb-4">
         <h1 className="text-2xl font-bold mb-1">Grocery List</h1>
         <p className="text-sm text-muted-foreground">
           {menu.clientName}
           {menu.weekLabel ? ` — ${menu.weekLabel}` : ''}
         </p>
       </div>
+
+      {menu.groceryGenerated && (
+        <ApproveGroceryBanner menuId={id} initialApproved={menu.groceryApproved} />
+      )}
 
       <GroceryPageClient menu={menu} initialGroceryItems={groceryItems} initialRemovedItems={removedItems} />
     </div>
