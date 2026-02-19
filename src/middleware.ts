@@ -23,8 +23,8 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Client portal authenticated routes
-  if (pathname.startsWith('/client')) {
+  // Client portal authenticated routes — must be /client or /client/* but NOT /clients/*
+  if (pathname === '/client' || pathname.startsWith('/client/')) {
     const clientToken = request.cookies.get('client-session')?.value;
     if (!clientToken) {
       const loginUrl = new URL('/client/login', request.url);

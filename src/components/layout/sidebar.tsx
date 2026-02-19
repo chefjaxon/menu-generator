@@ -19,8 +19,8 @@ export function Sidebar() {
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
 
-  // Hide sidebar on client portal and chef views
-  if (pathname.startsWith('/client') || pathname.startsWith('/chef')) {
+  // Hide sidebar on client portal and chef views (but NOT /clients admin route)
+  if (pathname === '/client' || pathname.startsWith('/client/') || pathname.startsWith('/chef')) {
     return null;
   }
 

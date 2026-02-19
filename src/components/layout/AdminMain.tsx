@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation';
 
 export function AdminMain({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isPortal = pathname.startsWith('/client') || pathname.startsWith('/chef');
+  const isPortal = (pathname === '/client' || pathname.startsWith('/client/')) || pathname.startsWith('/chef');
 
   if (isPortal) {
     return <div className="flex-1">{children}</div>;
