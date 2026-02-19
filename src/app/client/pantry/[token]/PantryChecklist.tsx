@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { CheckCircle2, ShoppingCart } from 'lucide-react';
+import Link from 'next/link';
+import { CheckCircle2, ShoppingCart, Home } from 'lucide-react';
 
 const CATEGORY_ORDER = ['produce', 'protein', 'dairy', 'pantry', 'other'] as const;
 const CATEGORY_LABELS: Record<string, string> = {
@@ -91,6 +92,13 @@ export function PantryChecklist({ menuId, token, items, alreadySubmitted }: Prop
         <p className="text-muted-foreground text-sm max-w-sm mx-auto">
           Your chef will skip the items you already have. Thank you!
         </p>
+        <Link
+          href="/client"
+          className="inline-flex items-center gap-2 mt-6 px-5 py-2.5 bg-foreground text-background text-sm font-medium rounded-xl hover:opacity-90 transition-opacity"
+        >
+          <Home className="h-4 w-4" />
+          Back to Home
+        </Link>
       </div>
     );
   }

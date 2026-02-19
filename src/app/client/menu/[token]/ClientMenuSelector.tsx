@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { ExternalLink, CheckCircle2, Circle, ChefHat } from 'lucide-react';
+import Link from 'next/link';
+import { ExternalLink, CheckCircle2, Circle, ChefHat, Home } from 'lucide-react';
 import type { Menu, MenuItem, Recipe, IngredientSwapCallout } from '@/lib/types';
 import { formatLabel } from '@/lib/utils';
 
@@ -79,8 +80,14 @@ export function ClientMenuSelector({ menu, token }: Props) {
         <h2 className="text-xl font-semibold mb-2">Selections received!</h2>
         <p className="text-muted-foreground text-sm max-w-sm mx-auto">
           Your chef has been notified and will finalize your menu shortly.
-          You may close this page.
         </p>
+        <Link
+          href="/client"
+          className="inline-flex items-center gap-2 mt-6 px-5 py-2.5 bg-foreground text-background text-sm font-medium rounded-xl hover:opacity-90 transition-opacity"
+        >
+          <Home className="h-4 w-4" />
+          Back to Home
+        </Link>
       </div>
     );
   }
