@@ -5,12 +5,13 @@ import { useRouter } from 'next/navigation';
 import { Plus, Trash2, X } from 'lucide-react';
 import { CUISINE_TYPES, ITEM_TYPES, COMMON_EXCLUSIONS } from '@/lib/types';
 import { formatLabel } from '@/lib/utils';
-import type { Recipe } from '@/lib/types';
+import type { Recipe, IngredientRole } from '@/lib/types';
 
 interface IngredientField {
   name: string;
   quantity: string;
   unit: string;
+  role: IngredientRole;
 }
 
 interface FormData {
@@ -25,6 +26,11 @@ interface FormData {
   tags: string[];
 }
 
+// Looser type for initialData so imported recipes (without role) are accepted
+interface InitialData extends Omit<Partial<FormData>, 'ingredients'> {
+  ingredients?: Array<{ name: string; quantity: string; unit: string; role?: IngredientRole }>;
+}
+
 // Common "contains" tag suggestions for recipes
 const RECIPE_TAG_SUGGESTIONS = [
   'dairy', 'gluten', 'nuts', 'soy', 'eggs', 'beef', 'pork', 'shellfish',
@@ -33,7 +39,7 @@ const RECIPE_TAG_SUGGESTIONS = [
   'white flour', 'white rice', 'fermented foods', 'coffee',
 ];
 
-export function RecipeForm({ recipe, initialData }: { recipe?: Recipe; initialData?: Partial<FormData> | null }) {
+export function RecipeForm({ recipe, initialData }: { recipe?: Recipe; initialData?: InitialData | null }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -54,11 +60,17 @@ export function RecipeForm({ recipe, initialData }: { recipe?: Recipe; initialDa
     cuisineType: initialData?.cuisineType ?? recipe?.cuisineType ?? 'american',
     itemType: initialData?.itemType ?? recipe?.itemType ?? 'meal',
     servingSize: initialData?.servingSize ?? recipe?.servingSize ?? 1,
-    ingredients: initialData?.ingredients ?? recipe?.ingredients?.map((i) => ({
+    ingredients: initialData?.ingredients?.map((i) => ({
+      name: i.name,
+      quantity: i.quantity,
+      unit: i.unit,
+      role: i.role ?? 'core' as IngredientRole,
+    })) ?? recipe?.ingredients?.map((i) => ({
       name: i.name,
       quantity: i.quantity || '',
       unit: i.unit || '',
-    })) ?? [{ name: '', quantity: '', unit: '' }],
+      role: i.role ?? 'core' as IngredientRole,
+    })) ?? [{ name: '', quantity: '', unit: '', role: 'core' as IngredientRole }],
     proteinSwaps: initialData?.proteinSwaps ?? recipe?.proteinSwaps ?? [],
     tags: initialData?.tags ?? recipe?.tags ?? [],
   });
@@ -70,7 +82,7 @@ export function RecipeForm({ recipe, initialData }: { recipe?: Recipe; initialDa
   function addIngredient() {
     setForm((prev) => ({
       ...prev,
-      ingredients: [...prev.ingredients, { name: '', quantity: '', unit: '' }],
+      ingredients: [...prev.ingredients, { name: '', quantity: '', unit: '', role: 'core' as IngredientRole }],
     }));
   }
 
@@ -81,7 +93,7 @@ export function RecipeForm({ recipe, initialData }: { recipe?: Recipe; initialDa
     }));
   }
 
-  function updateIngredient(index: number, field: keyof IngredientField, value: string) {
+  function updateIngredient(index: number, field: keyof IngredientField, value: string | IngredientRole) {
     setForm((prev) => ({
       ...prev,
       ingredients: prev.ingredients.map((ing, i) =>
@@ -367,6 +379,16 @@ export function RecipeForm({ recipe, initialData }: { recipe?: Recipe; initialDa
                 placeholder="Unit"
                 className="w-20 px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               />
+              <select
+                value={ing.role}
+                onChange={(e) => updateIngredient(i, 'role', e.target.value as IngredientRole)}
+                title="Ingredient role — determines if a recipe is excluded when a client has a restriction"
+                className="w-28 px-2 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring text-muted-foreground"
+              >
+                <option value="core">Core</option>
+                <option value="optional">Optional</option>
+                <option value="garnish">Garnish</option>
+              </select>
               {form.ingredients.length > 1 && (
                 <button
                   type="button"

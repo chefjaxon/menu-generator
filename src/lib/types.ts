@@ -14,11 +14,14 @@ export const COMMON_EXCLUSIONS: string[] = [
   'cod', 'salmon', 'shrimp',
 ];
 
+export type IngredientRole = 'core' | 'optional' | 'garnish';
+
 export interface Ingredient {
   id: string;
   name: string;
   quantity: string | null;
   unit: string | null;
+  role: IngredientRole;
   sortOrder: number;
 }
 
@@ -118,9 +121,11 @@ export interface SwapSuggestion {
   recipe: Recipe;
   score: number;
   availableProteins: string[];
+  omitNotes: string[];
 }
 
 export interface GenerateResult {
   menu: Menu;
   warnings: string[];
+  omitNotes: Record<string, string[]>;  // menuItemId -> list of omit instructions
 }

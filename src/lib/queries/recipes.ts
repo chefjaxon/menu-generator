@@ -1,6 +1,6 @@
 import { nanoid } from 'nanoid';
 import { prisma } from '../prisma';
-import type { Recipe, CuisineType, ItemType } from '../types';
+import type { Recipe, CuisineType, ItemType, IngredientRole } from '../types';
 
 function mapRecipe(row: {
   id: string;
@@ -12,7 +12,7 @@ function mapRecipe(row: {
   servingSize: number;
   createdAt: Date;
   updatedAt: Date;
-  ingredients: Array<{ id: string; name: string; quantity: string | null; unit: string | null; sortOrder: number }>;
+  ingredients: Array<{ id: string; name: string; quantity: string | null; unit: string | null; role: string; sortOrder: number; recipeId: string }>;
   proteinSwaps: Array<{ protein: string }>;
   tags: Array<{ tag: string }>;
 }): Recipe {
@@ -31,6 +31,7 @@ function mapRecipe(row: {
       name: i.name,
       quantity: i.quantity,
       unit: i.unit,
+      role: (i.role as IngredientRole) ?? 'core',
       sortOrder: i.sortOrder,
     })),
     proteinSwaps: row.proteinSwaps.map((p) => p.protein),
@@ -81,7 +82,7 @@ export interface RecipeInput {
   cuisineType: string;
   itemType: string;
   servingSize: number;
-  ingredients: Array<{ name: string; quantity?: string; unit?: string }>;
+  ingredients: Array<{ name: string; quantity?: string; unit?: string; role?: IngredientRole }>;
   proteinSwaps: string[];
   tags: string[];
 }
@@ -103,6 +104,7 @@ export async function createRecipe(data: RecipeInput): Promise<Recipe> {
           name: ing.name,
           quantity: ing.quantity || null,
           unit: ing.unit || null,
+          role: ing.role ?? 'core',
           sortOrder: i,
         })),
       },
@@ -143,6 +145,7 @@ export async function updateRecipe(id: string, data: RecipeInput): Promise<Recip
         name: ing.name,
         quantity: ing.quantity || null,
         unit: ing.unit || null,
+        role: ing.role ?? 'core',
         sortOrder: i,
       })),
     }),

@@ -178,6 +178,16 @@ export async function restoreRemovedItem(itemId: string): Promise<GroceryItem | 
  * 7. Return { items, removedItems }
  */
 export async function generateGroceryItemsFromMenu(menuId: string): Promise<GenerateGroceryResponse> {
+  // Fetch menu to get clientId, then fetch client restrictions
+  const menu = await prisma.menu.findUnique({
+    where: { id: menuId },
+    select: {
+      clientId: true,
+      client: { select: { restrictions: { select: { restriction: true } } } },
+    },
+  });
+  const clientRestrictions = menu?.client.restrictions.map((r) => r.restriction.toLowerCase().trim()) ?? [];
+
   const menuItems = await prisma.menuItem.findMany({
     where: { menuId, clientSelected: true },
     include: {
@@ -188,10 +198,18 @@ export async function generateGroceryItemsFromMenu(menuId: string): Promise<Gene
   });
 
   // Build raw ingredient list from all selected recipes
+  // Skip optional/garnish ingredients that conflict with client restrictions
   const rawItems: GroceryItem[] = [];
   let sortIdx = 0;
   for (const menuItem of menuItems) {
     for (const ing of menuItem.recipe.ingredients) {
+      if (clientRestrictions.length > 0 && ing.role !== 'core') {
+        const nameNorm = ing.name.toLowerCase().trim();
+        const isRestricted = clientRestrictions.some(
+          (r) => nameNorm.includes(r) || r.includes(nameNorm)
+        );
+        if (isRestricted) continue;
+      }
       rawItems.push({
         id: nanoid(),
         menuId,

@@ -32,6 +32,7 @@ model RecipeIngredient {
   name      String
   quantity  String?
   unit      String?
+  role      String  @default("core")
   sortOrder Int     @map("sort_order") @default(0)
 
   recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)

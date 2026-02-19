@@ -18,6 +18,7 @@ export function MenuGenerator({ clients }: Props) {
   const [selectedClientId, setSelectedClientId] = useState('');
   const [menu, setMenu] = useState<Menu | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
+  const [omitNotes, setOmitNotes] = useState<Record<string, string[]>>({});
   const [error, setError] = useState('');
   const [weekLabel, setWeekLabel] = useState('');
 
@@ -50,6 +51,7 @@ export function MenuGenerator({ clients }: Props) {
       const result: GenerateResult = await res.json();
       setMenu(result.menu);
       setWarnings(result.warnings);
+      setOmitNotes(result.omitNotes ?? {});
       setStep('review');
     } catch {
       setError('Failed to generate menu');
@@ -271,6 +273,15 @@ export function MenuGenerator({ clients }: Props) {
                     {item.recipe?.description && (
                       <p className="text-xs text-muted-foreground">{item.recipe.description}</p>
                     )}
+                    {omitNotes[item.id]?.length > 0 && (
+                      <div className="mt-1.5 flex flex-wrap gap-1">
+                        {omitNotes[item.id].map((note, ni) => (
+                          <span key={ni} className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded text-xs">
+                            {note}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <button
                     onClick={() => handleSwapClick(item.id)}
@@ -308,6 +319,9 @@ export function MenuGenerator({ clients }: Props) {
                               <span className="px-1.5 py-0.5 bg-secondary rounded text-xs">{formatLabel(s.recipe.cuisineType)}</span>
                               {s.availableProteins.map((p) => (
                                 <span key={p} className="px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded text-xs">{formatLabel(p)}</span>
+                              ))}
+                              {s.omitNotes?.map((note, ni) => (
+                                <span key={ni} className="px-1.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded text-xs">{note}</span>
                               ))}
                             </div>
                           </button>
@@ -372,6 +386,7 @@ export function MenuGenerator({ clients }: Props) {
                 setStep('select');
                 setMenu(null);
                 setWarnings([]);
+                setOmitNotes({});
                 setWeekLabel('');
                 setSelectedClientId('');
               }}

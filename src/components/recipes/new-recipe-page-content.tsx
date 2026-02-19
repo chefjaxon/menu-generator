@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Link2, Loader2 } from 'lucide-react';
 import { RecipeForm } from './recipe-form';
+import type { IngredientRole } from '@/lib/types';
 
 interface ImportedData {
   name: string;
@@ -11,7 +12,7 @@ interface ImportedData {
   cuisineType: string;
   itemType: string;
   servingSize: number;
-  ingredients: Array<{ name: string; quantity: string; unit: string }>;
+  ingredients: Array<{ name: string; quantity: string; unit: string; role?: IngredientRole }>;
   proteinSwaps: string[];
   tags: string[];
 }

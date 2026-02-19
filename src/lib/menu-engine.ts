@@ -8,9 +8,10 @@ interface ScoredRecipe {
   recipe: Recipe;
   score: number;
   availableProteins: string[];
+  omitNotes: string[];
 }
 
-function passesExclusionCheck(recipe: Recipe, clientExclusions: string[]): boolean {
+function passesTagExclusionCheck(recipe: Recipe, clientExclusions: string[]): boolean {
   if (clientExclusions.length === 0) return true;
 
   const recipeTags = recipe.tags.map((t) => t.toLowerCase().trim());
@@ -23,13 +24,48 @@ function passesExclusionCheck(recipe: Recipe, clientExclusions: string[]): boole
   return true;
 }
 
-async function getEligibleRecipes(client: Client): Promise<{ eligible: Recipe[]; warnings: string[] }> {
+type EligibilityResult =
+  | { eligible: true; omitNotes: string[] }
+  | { eligible: false };
+
+function checkIngredientEligibility(recipe: Recipe, clientExclusions: string[]): EligibilityResult {
+  if (clientExclusions.length === 0) return { eligible: true, omitNotes: [] };
+
+  const omitNotes: string[] = [];
+
+  for (const ingredient of recipe.ingredients) {
+    const nameNorm = ingredient.name.toLowerCase().trim();
+    for (const exclusion of clientExclusions) {
+      const exNorm = exclusion.toLowerCase().trim();
+      if (nameNorm.includes(exNorm) || exNorm.includes(nameNorm)) {
+        if (ingredient.role === 'core') {
+          return { eligible: false };
+        }
+        omitNotes.push(`Omit ${ingredient.name} (${exclusion})`);
+      }
+    }
+  }
+
+  return { eligible: true, omitNotes };
+}
+
+interface EligibleRecipe {
+  recipe: Recipe;
+  omitNotes: string[];
+}
+
+async function getEligibleRecipes(client: Client): Promise<{ eligible: EligibleRecipe[]; warnings: string[] }> {
   const allRecipes = await getAllRecipes();
   const warnings: string[] = [];
-  const eligible: Recipe[] = [];
+  const eligible: EligibleRecipe[] = [];
 
   for (const recipe of allRecipes) {
-    if (!passesExclusionCheck(recipe, client.restrictions)) continue;
+    // Layer 1: fast tag-based pre-filter (excludes recipes tagged as the restricted category)
+    if (!passesTagExclusionCheck(recipe, client.restrictions)) continue;
+
+    // Layer 2: ingredient-level role check (rescues recipes where only optional/garnish ingredients conflict)
+    const ingredientResult = checkIngredientEligibility(recipe, client.restrictions);
+    if (!ingredientResult.eligible) continue;
 
     if (recipe.proteinSwaps.length > 0) {
       const hasMatchingProtein = recipe.proteinSwaps.some((p) =>
@@ -38,7 +74,7 @@ async function getEligibleRecipes(client: Client): Promise<{ eligible: Recipe[];
       if (!hasMatchingProtein) continue;
     }
 
-    eligible.push(recipe);
+    eligible.push({ recipe, omitNotes: ingredientResult.omitNotes });
   }
 
   if (eligible.length < client.itemsPerMenu) {
@@ -52,7 +88,7 @@ async function getEligibleRecipes(client: Client): Promise<{ eligible: Recipe[];
 }
 
 function scoreRecipes(
-  recipes: Recipe[],
+  eligibleRecipes: EligibleRecipe[],
   client: Client
 ): ScoredRecipe[] {
   const cuisineWeights = new Map<string, number>();
@@ -60,7 +96,7 @@ function scoreRecipes(
     cuisineWeights.set(pref.cuisineType, pref.weight);
   }
 
-  return recipes.map((recipe) => {
+  return eligibleRecipes.map(({ recipe, omitNotes }) => {
     const cuisineScore = cuisineWeights.get(recipe.cuisineType) ?? 3;
     const randomFactor = Math.random() * 2;
     const score = cuisineScore + randomFactor;
@@ -69,7 +105,7 @@ function scoreRecipes(
       ? recipe.proteinSwaps.filter((p) => client.proteins.includes(p))
       : [];
 
-    return { recipe, score, availableProteins };
+    return { recipe, score, availableProteins, omitNotes };
   });
 }
 
@@ -86,8 +122,8 @@ export async function generateMenu(clientId: string): Promise<GenerateResult> {
 
   const recentRecipeIds = await getRecentRecipeIdsForClient(clientId, 6);
 
-  const freshEligible = eligible.filter((r) => !recentRecipeIds.has(r.id));
-  const staleEligible = eligible.filter((r) => recentRecipeIds.has(r.id));
+  const freshEligible = eligible.filter((r) => !recentRecipeIds.has(r.recipe.id));
+  const staleEligible = eligible.filter((r) => recentRecipeIds.has(r.recipe.id));
 
   if (freshEligible.length === 0 && staleEligible.length > 0) {
     warnings.push(
@@ -143,6 +179,7 @@ async function generateWithComposition(
 ): Promise<GenerateResult> {
   const usedRecipeIds = new Set<string>();
   const allItems: Array<{ recipeId: string; selectedProtein: string | null }> = [];
+  const omitNotesByRecipeId = new Map<string, string[]>();
   let anyStaleUsed = false;
 
   const proteinCategories = client.menuComposition.filter(
@@ -177,6 +214,7 @@ async function generateWithComposition(
 
     for (const item of selected) {
       usedRecipeIds.add(item.recipe.id);
+      if (item.omitNotes.length > 0) omitNotesByRecipeId.set(item.recipe.id, item.omitNotes);
       allItems.push({
         recipeId: item.recipe.id,
         selectedProtein: protein,
@@ -205,6 +243,7 @@ async function generateWithComposition(
 
     for (const item of selected) {
       usedRecipeIds.add(item.recipe.id);
+      if (item.omitNotes.length > 0) omitNotesByRecipeId.set(item.recipe.id, item.omitNotes);
       allItems.push({
         recipeId: item.recipe.id,
         selectedProtein: null,
@@ -227,7 +266,14 @@ async function generateWithComposition(
 
   const menu = await createDraftMenu(client.id, allItems);
 
-  return { menu, warnings };
+  // Build omitNotes keyed by menuItemId (matched via recipeId)
+  const omitNotes: Record<string, string[]> = {};
+  for (const menuItem of menu.items) {
+    const notes = omitNotesByRecipeId.get(menuItem.recipeId);
+    if (notes) omitNotes[menuItem.id] = notes;
+  }
+
+  return { menu, warnings, omitNotes };
 }
 
 async function generateLegacy(
@@ -290,6 +336,7 @@ async function generateLegacy(
   let proteinIndex = 0;
   const clientProteins = client.proteins;
   const result: Array<{ recipeId: string; selectedProtein: string | null }> = [];
+  const omitNotesByRecipeId = new Map<string, string[]>();
 
   for (const item of selected) {
     let selectedProtein: string | null = null;
@@ -304,6 +351,7 @@ async function generateLegacy(
       proteinIndex++;
     }
 
+    if (item.omitNotes.length > 0) omitNotesByRecipeId.set(item.recipe.id, item.omitNotes);
     result.push({
       recipeId: item.recipe.id,
       selectedProtein,
@@ -312,7 +360,14 @@ async function generateLegacy(
 
   const menu = await createDraftMenu(client.id, result);
 
-  return { menu, warnings };
+  // Build omitNotes keyed by menuItemId (matched via recipeId)
+  const omitNotes: Record<string, string[]> = {};
+  for (const menuItem of menu.items) {
+    const notes = omitNotesByRecipeId.get(menuItem.recipeId);
+    if (notes) omitNotes[menuItem.id] = notes;
+  }
+
+  return { menu, warnings, omitNotes };
 }
 
 export async function getSwapSuggestions(
@@ -343,18 +398,18 @@ export async function getSwapSuggestions(
 
   const { eligible } = await getEligibleRecipes(client);
 
-  let available = eligible.filter((r) => !currentRecipeIds.has(r.id));
+  let available = eligible.filter((r) => !currentRecipeIds.has(r.recipe.id));
 
   if (menuItemRow) {
     const itemType = menuItemRow.recipe.itemType;
     if (itemType === 'meal') {
-      available = available.filter((r) => r.itemType === 'meal');
+      available = available.filter((r) => r.recipe.itemType === 'meal');
     } else {
-      available = available.filter((r) => r.itemType === itemType);
+      available = available.filter((r) => r.recipe.itemType === itemType);
       if (available.length === 0) {
         available = eligible
-          .filter((r) => !currentRecipeIds.has(r.id))
-          .filter((r) => r.itemType === 'sweet-snack' || r.itemType === 'savory-snack');
+          .filter((r) => !currentRecipeIds.has(r.recipe.id))
+          .filter((r) => r.recipe.itemType === 'sweet-snack' || r.recipe.itemType === 'savory-snack');
       }
     }
   }
@@ -365,8 +420,8 @@ export async function getSwapSuggestions(
   }
 
   const recentRecipeIds = await getRecentRecipeIdsForClient(menuRow.clientId, 6);
-  const freshAvailable = available.filter((r) => !recentRecipeIds.has(r.id));
-  const staleAvailable = available.filter((r) => recentRecipeIds.has(r.id));
+  const freshAvailable = available.filter((r) => !recentRecipeIds.has(r.recipe.id));
+  const staleAvailable = available.filter((r) => recentRecipeIds.has(r.recipe.id));
 
   const freshSuggestions = scoreRecipes(freshAvailable, client);
   const staleSuggestions = scoreRecipes(staleAvailable, client);
@@ -380,6 +435,7 @@ export async function getSwapSuggestions(
     recipe: s.recipe,
     score: s.score,
     availableProteins: s.availableProteins,
+    omitNotes: s.omitNotes,
   }));
 
   return { suggestions, warnings };

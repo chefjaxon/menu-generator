@@ -8,6 +8,7 @@ const ingredientSchema = z.object({
   name: z.string().min(1, 'Ingredient name is required'),
   quantity: z.string().optional().default(''),
   unit: z.string().optional().default(''),
+  role: z.enum(['core', 'optional', 'garnish']).optional().default('core'),
 });
 
 export const recipeCreateSchema = z.object({
