@@ -7,14 +7,16 @@ import { ClientSelectionSection } from './ClientSelectionSection';
 import { GroceryListSection } from './GroceryListSection';
 import { PastePanelSection } from './PastePanelSection';
 import { RemovedItemsPanel } from './RemovedItemsPanel';
+import { ApproveGroceryBanner } from './ApproveGroceryBanner';
 
 interface Props {
   menu: Menu;
   initialGroceryItems: GroceryItem[];
   initialRemovedItems: RemovedItem[];
+  initialGroceryApproved: boolean;
 }
 
-export function GroceryPageClient({ menu, initialGroceryItems, initialRemovedItems }: Props) {
+export function GroceryPageClient({ menu, initialGroceryItems, initialRemovedItems, initialGroceryApproved }: Props) {
   const [menuItems, setMenuItems] = useState(menu.items);
   const [groceryItems, setGroceryItems] = useState<GroceryItem[]>(initialGroceryItems);
   const [removedItems, setRemovedItems] = useState<RemovedItem[]>(initialRemovedItems);
@@ -143,6 +145,10 @@ export function GroceryPageClient({ menu, initialGroceryItems, initialRemovedIte
         <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">
           {error}
         </div>
+      )}
+
+      {groceryItems.length > 0 && (
+        <ApproveGroceryBanner menuId={menu.id} initialApproved={initialGroceryApproved} />
       )}
 
       <ClientSelectionSection

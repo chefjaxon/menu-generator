@@ -4,7 +4,6 @@ import { ArrowLeft } from 'lucide-react';
 import { getMenuById } from '@/lib/queries/menus';
 import { getGroceryItemsForMenu, getRemovedItemsForMenu } from '@/lib/queries/grocery';
 import { GroceryPageClient } from '@/components/grocery/GroceryPageClient';
-import { ApproveGroceryBanner } from '@/components/grocery/ApproveGroceryBanner';
 
 export default async function GroceryPage({
   params,
@@ -40,11 +39,12 @@ export default async function GroceryPage({
         </p>
       </div>
 
-      {menu.groceryGenerated && (
-        <ApproveGroceryBanner menuId={id} initialApproved={menu.groceryApproved} />
-      )}
-
-      <GroceryPageClient menu={menu} initialGroceryItems={groceryItems} initialRemovedItems={removedItems} />
+      <GroceryPageClient
+        menu={menu}
+        initialGroceryItems={groceryItems}
+        initialRemovedItems={removedItems}
+        initialGroceryApproved={menu.groceryApproved}
+      />
     </div>
   );
 }
