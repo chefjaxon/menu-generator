@@ -115,3 +115,7 @@ export const parsePasteSchema = z.object({
 export const groceryRestoreSchema = z.object({
   itemId: z.string().min(1),
 });
+
+export const scrapeRecipeSchema = z.object({
+  url: z.string().url('Must be a valid URL'),
+});

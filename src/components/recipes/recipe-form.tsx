@@ -51,6 +51,8 @@ export function RecipeForm({ recipe }: { recipe?: Recipe }) {
   const [error, setError] = useState('');
   const [tagInput, setTagInput] = useState('');
   const [availableProteins, setAvailableProteins] = useState<string[]>([]);
+  const [scraping, setScraping] = useState(false);
+  const [scrapeError, setScrapeError] = useState('');
 
   useEffect(() => {
     fetch('/api/proteins')
@@ -178,6 +180,59 @@ export function RecipeForm({ recipe }: { recipe?: Recipe }) {
     }
   }
 
+  async function handleRecipeKeeperBlur() {
+    const url = form.recipeKeeperUrl.trim();
+    if (!url) return;
+
+    try {
+      new URL(url);
+    } catch {
+      return;
+    }
+
+    setScraping(true);
+    setScrapeError('');
+
+    try {
+      const res = await fetch('/api/recipes/scrape', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        setScrapeError(data.error ?? 'Could not fetch recipe data. You can fill in the fields manually.');
+        return;
+      }
+
+      setForm((prev) => ({
+        ...prev,
+        name: prev.name.trim() === '' && data.name ? data.name : prev.name,
+        description: prev.description.trim() === '' && data.description ? data.description : prev.description,
+        instructions: prev.instructions.trim() === '' && data.instructions ? data.instructions : prev.instructions,
+        servingSize: prev.servingSize === 1 && data.servingSize ? data.servingSize : prev.servingSize,
+        ingredients:
+          prev.ingredients.length === 1 &&
+          prev.ingredients[0].name.trim() === '' &&
+          data.ingredients?.length > 0
+            ? data.ingredients.map((ing: { name: string; quantity: string; unit: string }) => ({
+                name: ing.name,
+                quantity: ing.quantity,
+                unit: ing.unit,
+                role: 'core' as IngredientRole,
+                swaps: [],
+              }))
+            : prev.ingredients,
+      }));
+    } catch {
+      setScrapeError('Could not fetch recipe data. You can fill in the fields manually.');
+    } finally {
+      setScraping(false);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -248,13 +303,25 @@ export function RecipeForm({ recipe }: { recipe?: Recipe }) {
 
       <div>
         <label className="block text-sm font-medium mb-1">Recipe Keeper Link</label>
-        <input
-          type="url"
-          value={form.recipeKeeperUrl}
-          onChange={(e) => updateField('recipeKeeperUrl', e.target.value)}
-          className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          placeholder="https://recipekeeperonline.com/recipe/..."
-        />
+        <div className="relative">
+          <input
+            type="url"
+            value={form.recipeKeeperUrl}
+            onChange={(e) => { updateField('recipeKeeperUrl', e.target.value); setScrapeError(''); }}
+            onBlur={handleRecipeKeeperBlur}
+            disabled={scraping}
+            className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            placeholder="https://recipekeeperonline.com/recipe/..."
+          />
+          {scraping && (
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground animate-pulse">
+              Filling in fields...
+            </span>
+          )}
+        </div>
+        {scrapeError && (
+          <p className="mt-1 text-xs text-amber-600">{scrapeError}</p>
+        )}
       </div>
 
       <div>
