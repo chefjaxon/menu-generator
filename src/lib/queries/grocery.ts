@@ -18,6 +18,7 @@ function mapGroceryItem(row: {
   source: string;
   recipeItemId: string | null;
   notes: string | null;
+  clientNote?: string | null;
   sortOrder: number;
   category: string;
   createdAt: Date;
@@ -32,6 +33,7 @@ function mapGroceryItem(row: {
     source: row.source as 'recipe' | 'manual' | 'removed',
     recipeItemId: row.recipeItemId,
     notes: row.notes,
+    clientNote: row.clientNote ?? null,
     sortOrder: row.sortOrder,
     category: row.category,
     createdAt: row.createdAt.toISOString(),
@@ -265,6 +267,7 @@ export async function generateGroceryItemsFromMenu(menuId: string): Promise<Gene
               source: 'recipe',
               recipeItemId: ing.id,
               notes: `Swap for ${ing.name}`,
+              clientNote: null,
               sortOrder: sortIdx++,
               category: 'other',
               createdAt: new Date().toISOString(),
@@ -284,6 +287,7 @@ export async function generateGroceryItemsFromMenu(menuId: string): Promise<Gene
         source: 'recipe',
         recipeItemId: ing.id,
         notes: null,
+        clientNote: null,
         sortOrder: sortIdx++,
         category: 'other',
         createdAt: new Date().toISOString(),
@@ -380,6 +384,9 @@ export interface GroceryListSummary {
   totalItems: number;
   checkedItems: number;
   selectedCount: number;
+  pantrySubmitted: boolean;
+  pantryItemsHave: number;
+  pantryItemsNeed: number;
 }
 
 /**
@@ -401,14 +408,18 @@ export async function getAllGroceryListSummaries(): Promise<GroceryListSummary[]
 
   return menus.map((m) => {
     const mainItems = m.groceryItems.filter((g) => g.source !== 'removed');
+    const checkedCount = mainItems.filter((g) => g.checked).length;
     return {
       menuId: m.id,
       clientName: m.client.name,
       weekLabel: m.weekLabel,
       createdAt: m.createdAt.toISOString(),
       totalItems: mainItems.length,
-      checkedItems: mainItems.filter((g) => g.checked).length,
+      checkedItems: checkedCount,
       selectedCount: m.items.filter((i) => i.clientSelected).length,
+      pantrySubmitted: m.pantrySubmitted,
+      pantryItemsHave: checkedCount,
+      pantryItemsNeed: mainItems.length - checkedCount,
     };
   });
 }

@@ -103,6 +103,7 @@ export default async function MenuDetailPage({
           initialPantryToken={menu.pantryToken}
           pantrySubmitted={menu.pantrySubmitted}
           groceryGenerated={menu.groceryGenerated}
+          initialGroceryApproved={menu.groceryApproved}
         />
       </div>
 

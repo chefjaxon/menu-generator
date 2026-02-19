@@ -32,6 +32,7 @@ export function PantryChecklist({ menuId, token, items, alreadySubmitted }: Prop
   const [checked, setChecked] = useState<Set<string>>(
     () => new Set(items.filter((i) => i.checked).map((i) => i.id))
   );
+  const [notes, setNotes] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(alreadySubmitted);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -40,10 +41,23 @@ export function PantryChecklist({ menuId, token, items, alreadySubmitted }: Prop
     if (submitted) return;
     setChecked((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+        // Clear note when unchecked
+        setNotes((prevNotes) => {
+          const n = { ...prevNotes };
+          delete n[id];
+          return n;
+        });
+      } else {
+        next.add(id);
+      }
       return next;
     });
+  }
+
+  function updateNote(id: string, value: string) {
+    setNotes((prev) => ({ ...prev, [id]: value }));
   }
 
   async function handleSubmit() {
@@ -53,7 +67,10 @@ export function PantryChecklist({ menuId, token, items, alreadySubmitted }: Prop
     const res = await fetch(`/api/client/pantry/${token}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ checkedItemIds: Array.from(checked) }),
+      body: JSON.stringify({
+        checkedItemIds: Array.from(checked),
+        clientNotes: notes,
+      }),
     });
 
     setSubmitting(false);
@@ -102,23 +119,33 @@ export function PantryChecklist({ menuId, token, items, alreadySubmitted }: Prop
               </div>
               <div className="divide-y divide-border">
                 {catItems.map((item) => (
-                  <label
-                    key={item.id}
-                    className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-muted/30 transition-colors"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checked.has(item.id)}
-                      onChange={() => toggleItem(item.id)}
-                      className="h-4 w-4 rounded border-border"
-                    />
-                    <span className={`text-sm flex-1 ${checked.has(item.id) ? 'line-through text-muted-foreground' : ''}`}>
-                      {[item.quantity, item.unit, item.name].filter(Boolean).join(' ')}
-                    </span>
+                  <div key={item.id} className="px-4 py-3">
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={checked.has(item.id)}
+                        onChange={() => toggleItem(item.id)}
+                        className="h-4 w-4 rounded border-border shrink-0"
+                      />
+                      <span className={`text-sm flex-1 ${checked.has(item.id) ? 'line-through text-muted-foreground' : ''}`}>
+                        {[item.quantity, item.unit, item.name].filter(Boolean).join(' ')}
+                      </span>
+                      {checked.has(item.id) && (
+                        <span className="text-xs text-green-600 font-medium shrink-0">Have it</span>
+                      )}
+                    </label>
                     {checked.has(item.id) && (
-                      <span className="text-xs text-green-600 font-medium shrink-0">Have it</span>
+                      <div className="mt-2 ml-7">
+                        <input
+                          type="text"
+                          value={notes[item.id] ?? ''}
+                          onChange={(e) => updateNote(item.id, e.target.value)}
+                          placeholder="Optional note (e.g. 'only have half', 'different brand')"
+                          className="w-full text-xs px-3 py-1.5 border border-border rounded-md bg-muted/30 placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-ring"
+                        />
+                      </div>
                     )}
-                  </label>
+                  </div>
                 ))}
               </div>
             </div>

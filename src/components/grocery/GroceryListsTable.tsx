@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Search, ShoppingCart, Calendar, CheckSquare, ChefHat } from 'lucide-react';
+import { Search, ShoppingCart, Calendar, CheckSquare, ChefHat, CheckCircle2, Package, ShoppingBag } from 'lucide-react';
 import type { Client } from '@/lib/types';
 import type { GroceryListSummary } from '@/lib/queries/grocery';
 
@@ -72,6 +72,7 @@ export function GroceryListsTable({
                 <th className="text-left px-4 py-3 font-medium">Week</th>
                 <th className="text-left px-4 py-3 font-medium">Selections</th>
                 <th className="text-left px-4 py-3 font-medium">Grocery Items</th>
+                <th className="text-left px-4 py-3 font-medium">Pantry Status</th>
                 <th className="text-left px-4 py-3 font-medium">Created</th>
                 <th className="text-right px-4 py-3 font-medium">Actions</th>
               </tr>
@@ -116,6 +117,29 @@ export function GroceryListsTable({
                         </div>
                       ) : (
                         <span className="text-muted-foreground text-xs">No items yet</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {s.pantrySubmitted ? (
+                        <div className="space-y-1.5">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                            <CheckCircle2 className="h-3 w-3" />
+                            Pantry Submitted
+                          </span>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-0.5 text-green-700">
+                              <Package className="h-3 w-3" />
+                              {s.pantryItemsHave} have
+                            </span>
+                            <span className="text-border">·</span>
+                            <span className="flex items-center gap-0.5">
+                              <ShoppingBag className="h-3 w-3" />
+                              {s.pantryItemsNeed} to buy
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">Awaiting client</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">

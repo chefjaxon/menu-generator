@@ -152,6 +152,7 @@ model Menu {
   clientToken      String?   @unique @map("client_token")
   pantryToken      String?   @unique @map("pantry_token")
   pantrySubmitted  Boolean   @default(false) @map("pantry_submitted")
+  groceryApproved  Boolean   @default(false) @map("grocery_approved")
 
   client          Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
   items           MenuItem[]
@@ -281,6 +282,7 @@ model GroceryItem {
   source       String   @default("recipe")
   recipeItemId String?  @map("recipe_item_id")
   notes        String?
+  clientNote   String?  @map("client_note")
   sortOrder    Int      @map("sort_order") @default(0)
   category     String   @default("other")
   createdAt    DateTime @map("created_at") @default(now())

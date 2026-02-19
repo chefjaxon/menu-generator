@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Send, Link2, ShoppingBag, CheckCircle2, Copy } from 'lucide-react';
+import { Send, Link2, ShoppingBag, CheckCircle2, Copy, ClipboardCheck, Lock } from 'lucide-react';
 
 interface Props {
   menuId: string;
@@ -9,6 +9,7 @@ interface Props {
   initialPantryToken: string | null;
   pantrySubmitted: boolean;
   groceryGenerated: boolean;
+  initialGroceryApproved: boolean;
 }
 
 export function PublishControls({
@@ -17,10 +18,13 @@ export function PublishControls({
   initialPantryToken,
   pantrySubmitted,
   groceryGenerated,
+  initialGroceryApproved,
 }: Props) {
   const [clientToken, setClientToken] = useState(initialClientToken);
   const [pantryToken, setPantryToken] = useState(initialPantryToken);
+  const [groceryApproved, setGroceryApproved] = useState(initialGroceryApproved);
   const [publishing, setPublishing] = useState(false);
+  const [approving, setApproving] = useState(false);
   const [sendingPantry, setSendingPantry] = useState(false);
   const [copied, setCopied] = useState<'menu' | 'pantry' | null>(null);
 
@@ -33,6 +37,15 @@ export function PublishControls({
     if (res.ok) {
       const data = await res.json();
       setClientToken(data.clientToken);
+    }
+  }
+
+  async function handleApproveGrocery() {
+    setApproving(true);
+    const res = await fetch(`/api/menus/${menuId}/approve-grocery`, { method: 'POST' });
+    setApproving(false);
+    if (res.ok) {
+      setGroceryApproved(true);
     }
   }
 
@@ -87,8 +100,33 @@ export function PublishControls({
         )}
       </div>
 
-      {/* Pantry link — only shown after grocery list is generated */}
-      {groceryGenerated && (
+      {/* Approve grocery list — only shown after grocery list is generated but not yet approved */}
+      {groceryGenerated && !groceryApproved && (
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleApproveGrocery}
+            disabled={approving}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded border border-green-600 text-green-700 hover:bg-green-50 disabled:opacity-50"
+          >
+            <ClipboardCheck className="h-3.5 w-3.5" />
+            {approving ? 'Approving…' : 'Approve Grocery List'}
+          </button>
+          <p className="text-xs text-muted-foreground">
+            Review and approve before sharing with client
+          </p>
+        </div>
+      )}
+
+      {/* Approved badge */}
+      {groceryGenerated && groceryApproved && (
+        <div className="flex items-center gap-1.5 text-xs text-green-700 font-medium">
+          <CheckCircle2 className="h-3.5 w-3.5" />
+          Grocery list approved
+        </div>
+      )}
+
+      {/* Pantry link — only shown after grocery list is approved */}
+      {groceryGenerated && groceryApproved && (
         <div className="flex items-center gap-2">
           {pantryToken ? (
             <>
@@ -120,6 +158,14 @@ export function PublishControls({
             </button>
           )}
         </div>
+      )}
+
+      {/* Locked state — grocery generated but not approved yet */}
+      {groceryGenerated && !groceryApproved && (
+        <p className="text-xs text-muted-foreground flex items-center gap-1">
+          <Lock className="h-3 w-3" />
+          Approve the grocery list above to enable the pantry checklist link.
+        </p>
       )}
 
       {!groceryGenerated && clientToken && (

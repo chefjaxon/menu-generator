@@ -104,6 +104,7 @@ export interface GroceryItem {
   source: GrocerySource;
   recipeItemId: string | null;
   notes: string | null;
+  clientNote: string | null;
   sortOrder: number;
   category: string;
   createdAt: string;
@@ -139,6 +140,7 @@ export interface Menu {
   clientToken: string | null;
   pantryToken: string | null;
   pantrySubmitted: boolean;
+  groceryApproved: boolean;
   items: MenuItem[];
   clientRestrictions?: string[];
 }

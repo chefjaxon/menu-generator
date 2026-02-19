@@ -14,6 +14,7 @@ function mapMenu(row: {
   clientToken: string | null;
   pantryToken: string | null;
   pantrySubmitted: boolean;
+  groceryApproved: boolean;
   client?: { name: string };
   items: Array<{
     id: string;
@@ -50,6 +51,7 @@ function mapMenu(row: {
     clientToken: row.clientToken,
     pantryToken: row.pantryToken,
     pantrySubmitted: row.pantrySubmitted,
+    groceryApproved: row.groceryApproved,
     items,
   };
 }
@@ -65,7 +67,7 @@ export async function getAllMenus(clientId?: string): Promise<Menu[]> {
     select: {
       id: true, clientId: true, createdAt: true, finalized: true, weekLabel: true,
       groceryGenerated: true, publishedAt: true, clientToken: true, pantryToken: true,
-      pantrySubmitted: true,
+      pantrySubmitted: true, groceryApproved: true,
       client: { select: { name: true } },
       items: {
         orderBy: { sortOrder: 'asc' },
@@ -83,7 +85,7 @@ export async function getMenuById(id: string): Promise<Menu | null> {
     select: {
       id: true, clientId: true, createdAt: true, finalized: true, weekLabel: true,
       groceryGenerated: true, publishedAt: true, clientToken: true, pantryToken: true,
-      pantrySubmitted: true,
+      pantrySubmitted: true, groceryApproved: true,
       client: { select: { name: true } },
       items: {
         orderBy: { sortOrder: 'asc' },
@@ -232,7 +234,7 @@ export async function getMenuByClientToken(token: string): Promise<Menu | null> 
     select: {
       id: true, clientId: true, createdAt: true, finalized: true, weekLabel: true,
       groceryGenerated: true, publishedAt: true, clientToken: true, pantryToken: true,
-      pantrySubmitted: true,
+      pantrySubmitted: true, groceryApproved: true,
       client: {
         select: {
           name: true,
@@ -301,7 +303,7 @@ export async function getMenuByPantryToken(token: string): Promise<Menu | null> 
     select: {
       id: true, clientId: true, createdAt: true, finalized: true, weekLabel: true,
       groceryGenerated: true, publishedAt: true, clientToken: true, pantryToken: true,
-      pantrySubmitted: true,
+      pantrySubmitted: true, groceryApproved: true,
       client: { select: { name: true } },
       items: {
         orderBy: { sortOrder: 'asc' },
@@ -315,19 +317,35 @@ export async function getMenuByPantryToken(token: string): Promise<Menu | null> 
 
 export async function submitPantryChecklist(
   menuId: string,
-  checkedItemIds: string[]
+  checkedItemIds: string[],
+  clientNotes?: Record<string, string>
 ): Promise<boolean> {
   try {
-    await prisma.$transaction([
-      prisma.groceryItem.updateMany({
-        where: { menuId, id: { in: checkedItemIds } },
-        data: { checked: true },
-      }),
-      prisma.menu.update({
+    await prisma.$transaction(async (tx) => {
+      // Mark all checked items
+      if (checkedItemIds.length > 0) {
+        await tx.groceryItem.updateMany({
+          where: { menuId, id: { in: checkedItemIds } },
+          data: { checked: true },
+        });
+      }
+      // Save per-item client notes for checked items that have a note
+      if (clientNotes) {
+        for (const [itemId, note] of Object.entries(clientNotes)) {
+          if (note && note.trim()) {
+            await tx.groceryItem.update({
+              where: { id: itemId },
+              data: { clientNote: note.trim() },
+            });
+          }
+        }
+      }
+      // Mark pantry as submitted
+      await tx.menu.update({
         where: { id: menuId },
         data: { pantrySubmitted: true },
-      }),
-    ]);
+      });
+    });
     return true;
   } catch {
     return false;
@@ -336,4 +354,16 @@ export async function submitPantryChecklist(
 
 export async function getMenusByClientId(clientId: string): Promise<Menu[]> {
   return getAllMenus(clientId);
+}
+
+export async function approveGroceryList(menuId: string): Promise<boolean> {
+  try {
+    await prisma.menu.update({
+      where: { id: menuId },
+      data: { groceryApproved: true },
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }

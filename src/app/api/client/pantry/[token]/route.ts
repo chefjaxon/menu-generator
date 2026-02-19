@@ -7,7 +7,10 @@ export async function POST(
 ) {
   const { token } = await params;
   const body = await request.json();
-  const { checkedItemIds } = body as { checkedItemIds: string[] };
+  const { checkedItemIds, clientNotes } = body as {
+    checkedItemIds: string[];
+    clientNotes?: Record<string, string>;
+  };
 
   if (!Array.isArray(checkedItemIds)) {
     return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
@@ -22,7 +25,7 @@ export async function POST(
     return NextResponse.json({ ok: true, alreadySubmitted: true });
   }
 
-  const ok = await submitPantryChecklist(menu.id, checkedItemIds);
+  const ok = await submitPantryChecklist(menu.id, checkedItemIds, clientNotes);
   if (!ok) {
     return NextResponse.json({ error: 'Failed to submit' }, { status: 500 });
   }
