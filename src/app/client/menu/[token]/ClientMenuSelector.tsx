@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { ExternalLink, CheckCircle2, Circle, ChefHat } from 'lucide-react';
-import type { Menu, MenuItem, Recipe } from '@/lib/types';
+import type { Menu, MenuItem, Recipe, IngredientSwapCallout } from '@/lib/types';
 import { formatLabel } from '@/lib/utils';
 
 interface SelectionState {
@@ -251,6 +251,18 @@ function RecipeCard({
               </span>
             ))}
           </div>
+          {item.applicableSwaps && item.applicableSwaps.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {item.applicableSwaps.map((swap: IngredientSwapCallout, i: number) => (
+                <span
+                  key={i}
+                  className="text-xs px-1.5 py-0.5 bg-muted/60 text-muted-foreground rounded border border-border/60"
+                >
+                  {swap.original} &rarr; {swap.substitute}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

@@ -4,6 +4,8 @@ import { ArrowLeft, Calendar, User, ChefHat, UtensilsCrossed, Cookie, ShoppingCa
 import { getMenuById } from '@/lib/queries/menus';
 import { formatLabel } from '@/lib/utils';
 import { PublishControls } from '@/components/menus/PublishControls';
+import { ChefAssignControl } from '@/components/menus/ChefAssignControl';
+import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,11 +15,20 @@ export default async function MenuDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const menu = await getMenuById(id);
+  const [menu, allChefs, assignment] = await Promise.all([
+    getMenuById(id),
+    prisma.chef.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true, email: true } }),
+    prisma.chefAssignment.findFirst({
+      where: { menuId: id },
+      include: { chef: { select: { id: true, name: true, email: true } } },
+    }),
+  ]);
 
   if (!menu) {
     notFound();
   }
+
+  const assignedChef = assignment?.chef ?? null;
 
   const meals = menu.items.filter((i) => i.recipe?.itemType === 'meal');
   const sweetSnacks = menu.items.filter((i) => i.recipe?.itemType === 'sweet-snack');
@@ -92,6 +103,15 @@ export default async function MenuDetailPage({
           initialPantryToken={menu.pantryToken}
           pantrySubmitted={menu.pantrySubmitted}
           groceryGenerated={menu.groceryGenerated}
+        />
+      </div>
+
+      {/* Chef assignment */}
+      <div className="mb-6">
+        <ChefAssignControl
+          menuId={menu.id}
+          chefs={allChefs}
+          assignedChef={assignedChef}
         />
       </div>
 

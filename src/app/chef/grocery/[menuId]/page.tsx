@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { ChefGroceryView } from './ChefGroceryView';
@@ -96,7 +97,12 @@ export default async function ChefGroceryPage({
             <div className="space-y-1.5">
               {menu.items.map((item) => (
                 <div key={item.id} className="text-sm">
-                  <span className="font-medium">{item.recipe?.name ?? '—'}</span>
+                  <Link
+                    href={`/chef/recipe/${item.id}`}
+                    className="font-medium hover:underline"
+                  >
+                    {item.recipe?.name ?? '—'}
+                  </Link>
                   {item.clientNote && (
                     <span className="ml-2 text-xs text-green-700 italic">
                       &ldquo;{item.clientNote}&rdquo;

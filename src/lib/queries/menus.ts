@@ -233,7 +233,12 @@ export async function getMenuByClientToken(token: string): Promise<Menu | null> 
       id: true, clientId: true, createdAt: true, finalized: true, weekLabel: true,
       groceryGenerated: true, publishedAt: true, clientToken: true, pantryToken: true,
       pantrySubmitted: true,
-      client: { select: { name: true } },
+      client: {
+        select: {
+          name: true,
+          restrictions: { select: { restriction: true } },
+        },
+      },
       items: {
         orderBy: { sortOrder: 'asc' },
         select: MENU_SELECT_ITEMS,
@@ -249,7 +254,9 @@ export async function getMenuByClientToken(token: string): Promise<Menu | null> 
     recipes[recipeIds[i]] = recipeList[i];
   }
 
-  return mapMenu(row, true, recipes);
+  const menu = mapMenu(row, true, recipes);
+  menu.clientRestrictions = (row.client?.restrictions ?? []).map((r) => r.restriction.toLowerCase().trim());
+  return menu;
 }
 
 export async function submitClientSelections(

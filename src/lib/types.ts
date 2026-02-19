@@ -74,6 +74,11 @@ export interface Client {
   menuComposition: MenuComposition[];
 }
 
+export interface IngredientSwapCallout {
+  original: string;
+  substitute: string;
+}
+
 export interface MenuItem {
   id: string;
   menuId: string;
@@ -84,6 +89,7 @@ export interface MenuItem {
   omitNotes?: string[];
   clientNote?: string | null;
   recipe?: Recipe;
+  applicableSwaps?: IngredientSwapCallout[];
 }
 
 export type GrocerySource = 'recipe' | 'manual' | 'removed';
@@ -134,6 +140,7 @@ export interface Menu {
   pantryToken: string | null;
   pantrySubmitted: boolean;
   items: MenuItem[];
+  clientRestrictions?: string[];
 }
 
 export interface SwapSuggestion {

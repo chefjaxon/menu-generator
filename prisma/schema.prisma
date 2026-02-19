@@ -153,9 +153,10 @@ model Menu {
   pantryToken      String?   @unique @map("pantry_token")
   pantrySubmitted  Boolean   @default(false) @map("pantry_submitted")
 
-  client       Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  items        MenuItem[]
-  groceryItems GroceryItem[]
+  client          Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  items           MenuItem[]
+  groceryItems    GroceryItem[]
+  chefAssignments ChefAssignment[]
 
   @@map("menus")
 }
@@ -174,6 +175,43 @@ model MenuItem {
   recipe Recipe @relation(fields: [recipeId], references: [id])
 
   @@map("menu_items")
+}
+
+model Chef {
+  id           String   @id
+  name         String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  sessions    ChefSession[]
+  assignments ChefAssignment[]
+
+  @@map("chefs")
+}
+
+model ChefSession {
+  id        String   @id
+  chefId    String   @map("chef_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  chef Chef @relation(fields: [chefId], references: [id], onDelete: Cascade)
+
+  @@map("chef_sessions")
+}
+
+model ChefAssignment {
+  id     String @id
+  chefId String @map("chef_id")
+  menuId String @map("menu_id")
+
+  chef Chef @relation(fields: [chefId], references: [id], onDelete: Cascade)
+  menu Menu @relation(fields: [menuId], references: [id], onDelete: Cascade)
+
+  @@unique([chefId, menuId])
+  @@map("chef_assignments")
 }
 
 model User {

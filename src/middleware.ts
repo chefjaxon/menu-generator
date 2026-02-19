@@ -23,6 +23,14 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Chef public routes
+  if (
+    pathname === '/chef/login' ||
+    pathname.startsWith('/api/chef/auth/')
+  ) {
+    return NextResponse.next();
+  }
+
   // Client portal authenticated routes — must be /client or /client/* but NOT /clients/*
   if (pathname === '/client' || pathname.startsWith('/client/')) {
     const clientToken = request.cookies.get('client-session')?.value;
@@ -38,6 +46,17 @@ export function middleware(request: NextRequest) {
     pathname === '/login' ||
     pathname.startsWith('/api/auth/')
   ) {
+    return NextResponse.next();
+  }
+
+  // Chef routes — accept either chef-session or admin menu-gen-session
+  if (pathname === '/chef' || pathname.startsWith('/chef/')) {
+    const chefToken = request.cookies.get('chef-session')?.value;
+    const adminToken = request.cookies.get('menu-gen-session')?.value;
+    if (!chefToken && !adminToken) {
+      const loginUrl = new URL('/chef/login', request.url);
+      return NextResponse.redirect(loginUrl);
+    }
     return NextResponse.next();
   }
 

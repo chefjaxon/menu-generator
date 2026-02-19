@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { ChefHat, Users, CalendarDays, LayoutDashboard, Plus, Sparkles, LogOut, Settings, ShoppingCart } from 'lucide-react';
+import { ChefHat, Users, CalendarDays, LayoutDashboard, Plus, Sparkles, LogOut, Settings, ShoppingCart, UtensilsCrossed } from 'lucide-react';
 import { useState } from 'react';
 
 const navItems = [
@@ -11,7 +11,8 @@ const navItems = [
   { href: '/clients', label: 'Clients', icon: Users },
   { href: '/menus', label: 'Menu History', icon: CalendarDays },
   { href: '/grocery-lists', label: 'Grocery Lists', icon: ShoppingCart },
-{ href: '/settings', label: 'Settings', icon: Settings },
+  { href: '/chefs', label: 'Chefs', icon: UtensilsCrossed },
+  { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
 export function Sidebar() {
