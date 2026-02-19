@@ -19,6 +19,11 @@ export function Sidebar() {
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
 
+  // Hide sidebar on client portal and chef views
+  if (pathname.startsWith('/client') || pathname.startsWith('/chef')) {
+    return null;
+  }
+
   async function handleLogout() {
     setLoggingOut(true);
     await fetch('/api/auth/logout', { method: 'POST' });

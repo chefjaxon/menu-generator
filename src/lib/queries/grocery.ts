@@ -5,6 +5,7 @@ import {
   normalizeIngredientNames,
   applyClaudeGrayZoneNormalization,
 } from '../grocery-utils';
+import { classifyIngredient } from '../ingredient-categories';
 import type { GroceryItem, RemovedItem, GenerateGroceryResponse } from '../types';
 
 function mapGroceryItem(row: {
@@ -18,6 +19,7 @@ function mapGroceryItem(row: {
   recipeItemId: string | null;
   notes: string | null;
   sortOrder: number;
+  category: string;
   createdAt: Date;
 }): GroceryItem {
   return {
@@ -31,6 +33,7 @@ function mapGroceryItem(row: {
     recipeItemId: row.recipeItemId,
     notes: row.notes,
     sortOrder: row.sortOrder,
+    category: row.category,
     createdAt: row.createdAt.toISOString(),
   };
 }
@@ -197,6 +200,7 @@ export async function generateGroceryItemsFromMenu(menuId: string): Promise<Gene
             orderBy: { sortOrder: 'asc' },
             include: { swaps: true },
           },
+          proteinSwaps: true,
         },
       },
     },
@@ -210,7 +214,28 @@ export async function generateGroceryItemsFromMenu(menuId: string): Promise<Gene
   const rawItems: GroceryItem[] = [];
   let sortIdx = 0;
   for (const menuItem of menuItems) {
+    // Determine non-selected proteins for this menu item so we can skip their ingredients.
+    // If a selectedProtein is set, any protein in the recipe's proteinSwaps that is NOT
+    // the selected one should not contribute ingredients to the grocery list.
+    const nonSelectedProteins: string[] = [];
+    if (menuItem.selectedProtein && menuItem.recipe.proteinSwaps.length > 1) {
+      for (const ps of menuItem.recipe.proteinSwaps) {
+        if (ps.protein.toLowerCase().trim() !== menuItem.selectedProtein.toLowerCase().trim()) {
+          nonSelectedProteins.push(ps.protein.toLowerCase().trim());
+        }
+      }
+    }
+
     for (const ing of menuItem.recipe.ingredients) {
+      // Skip ingredient if its name matches a non-selected protein
+      if (nonSelectedProteins.length > 0) {
+        const ingNameNorm = ing.name.toLowerCase().trim();
+        const isNonSelectedProtein = nonSelectedProteins.some(
+          (p) => ingNameNorm.includes(p) || p.includes(ingNameNorm)
+        );
+        if (isNonSelectedProtein) continue;
+      }
+
       if (clientRestrictions.length > 0) {
         const nameNorm = ing.name.toLowerCase().trim();
         let restricted = false;
@@ -241,6 +266,7 @@ export async function generateGroceryItemsFromMenu(menuId: string): Promise<Gene
               recipeItemId: ing.id,
               notes: `Swap for ${ing.name}`,
               sortOrder: sortIdx++,
+              category: 'other',
               createdAt: new Date().toISOString(),
             });
           }
@@ -259,6 +285,7 @@ export async function generateGroceryItemsFromMenu(menuId: string): Promise<Gene
         recipeItemId: ing.id,
         notes: null,
         sortOrder: sortIdx++,
+        category: 'other',
         createdAt: new Date().toISOString(),
       });
     }
@@ -305,6 +332,7 @@ export async function generateGroceryItemsFromMenu(menuId: string): Promise<Gene
     recipeItemId: item.recipeItemId,
     notes: item.notes,
     sortOrder: i,
+    category: classifyIngredient(item.name),
   }));
 
   const toCreateRemoved = deduplicatedRemoved.map((item, i) => ({
@@ -318,6 +346,7 @@ export async function generateGroceryItemsFromMenu(menuId: string): Promise<Gene
     recipeItemId: item.recipeItemId,
     notes: null,
     sortOrder: i,
+    category: classifyIngredient(item.name),
   }));
 
   // Step 6: Atomic replace — delete stale recipe/removed rows, persist new split
@@ -328,6 +357,10 @@ export async function generateGroceryItemsFromMenu(menuId: string): Promise<Gene
     }),
     prisma.groceryItem.createMany({ data: toCreateItems }),
     prisma.groceryItem.createMany({ data: toCreateRemoved }),
+    prisma.menu.update({
+      where: { id: menuId },
+      data: { groceryGenerated: true },
+    }),
   ]);
 
   // Step 7: Fetch and return both sets

@@ -15,6 +15,9 @@ interface CuisinePrefField {
 interface FormData {
   name: string;
   notes: string;
+  chefNotes: string;
+  servingsPerDish: number;
+  dishCount: number;
   proteins: string[];
   restrictions: string[];
   cuisinePreferences: CuisinePrefField[];
@@ -233,6 +236,9 @@ export function ClientForm({ client }: { client?: Client }) {
   const [form, setForm] = useState<FormData>({
     name: client?.name || '',
     notes: client?.notes || '',
+    chefNotes: client?.chefNotes || '',
+    servingsPerDish: client?.servingsPerDish ?? 4,
+    dishCount: client?.dishCount ?? 3,
     proteins: client?.proteins || [],
     restrictions: client?.restrictions || [],
     cuisinePreferences: defaultCuisinePrefs,
@@ -499,14 +505,53 @@ export function ClientForm({ client }: { client?: Client }) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-1">Notes</label>
+        <label className="block text-sm font-medium mb-1">Internal Notes</label>
         <textarea
           value={form.notes}
           onChange={(e) => updateField('notes', e.target.value)}
           rows={2}
           className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          placeholder="Any additional notes about this client"
+          placeholder="Any additional internal notes about this client"
         />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium mb-1">Chef Notes</label>
+        <p className="text-xs text-muted-foreground mb-2">
+          Service details for your chefs — address, organic priority, meat quality, spice level, etc.
+        </p>
+        <textarea
+          value={form.chefNotes}
+          onChange={(e) => updateField('chefNotes', e.target.value)}
+          rows={8}
+          className="w-full px-3 py-2 border border-border rounded-md text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring"
+          placeholder={`Address: 123 Main St, Austin, TX 78701\n\nAmount of servings per dish: 4\n\nOrganic Priority Level: High Priority — shop at Whole Foods\n\nMeat quality: Grass fed, pasture raised, air chilled chicken\n\nSpice level: Mild\n\nDietary Restrictions: Pescatarian`}
+        />
+      </div>
+
+      <div className="flex gap-6">
+        <div>
+          <label className="block text-sm font-medium mb-1">Dishes per Session</label>
+          <input
+            type="number"
+            min={1}
+            max={20}
+            value={form.dishCount}
+            onChange={(e) => updateField('dishCount', parseInt(e.target.value) || 3)}
+            className="w-24 px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Servings per Dish</label>
+          <input
+            type="number"
+            min={1}
+            max={20}
+            value={form.servingsPerDish}
+            onChange={(e) => updateField('servingsPerDish', parseInt(e.target.value) || 4)}
+            className="w-24 px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </div>
       </div>
 
       <div>

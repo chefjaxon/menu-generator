@@ -10,6 +10,7 @@ function mapRecipe(row: {
   cuisineType: string;
   itemType: string;
   servingSize: number;
+  recipeKeeperUrl: string | null;
   createdAt: Date;
   updatedAt: Date;
   ingredients: Array<{
@@ -33,6 +34,7 @@ function mapRecipe(row: {
     cuisineType: row.cuisineType as CuisineType,
     itemType: row.itemType as ItemType,
     servingSize: row.servingSize,
+    recipeKeeperUrl: row.recipeKeeperUrl,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     ingredients: row.ingredients.map((i) => ({
@@ -99,6 +101,7 @@ export interface RecipeInput {
   cuisineType: string;
   itemType: string;
   servingSize: number;
+  recipeKeeperUrl?: string;
   ingredients: Array<{
     name: string;
     quantity?: string;
@@ -123,6 +126,7 @@ export async function createRecipe(data: RecipeInput): Promise<Recipe> {
       cuisineType: data.cuisineType,
       itemType: data.itemType,
       servingSize: data.servingSize,
+      recipeKeeperUrl: data.recipeKeeperUrl || null,
       ingredients: {
         create: data.ingredients.map((ing, i) => ({
           id: nanoid(),
@@ -183,6 +187,7 @@ export async function updateRecipe(id: string, data: RecipeInput): Promise<Recip
         cuisineType: data.cuisineType,
         itemType: data.itemType,
         servingSize: data.servingSize,
+        recipeKeeperUrl: data.recipeKeeperUrl || null,
       },
     }),
     prisma.recipeIngredient.deleteMany({ where: { recipeId: id } }),

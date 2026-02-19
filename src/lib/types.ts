@@ -40,6 +40,7 @@ export interface Recipe {
   cuisineType: CuisineType;
   itemType: ItemType;
   servingSize: number;
+  recipeKeeperUrl: string | null;
   createdAt: string;
   updatedAt: string;
   ingredients: Ingredient[];
@@ -62,6 +63,9 @@ export interface Client {
   name: string;
   itemsPerMenu: number;
   notes: string | null;
+  chefNotes: string | null;
+  servingsPerDish: number;
+  dishCount: number;
   createdAt: string;
   updatedAt: string;
   proteins: string[];
@@ -77,6 +81,8 @@ export interface MenuItem {
   selectedProtein: string | null;
   sortOrder: number;
   clientSelected: boolean;
+  omitNotes?: string[];
+  clientNote?: string | null;
   recipe?: Recipe;
 }
 
@@ -93,6 +99,7 @@ export interface GroceryItem {
   recipeItemId: string | null;
   notes: string | null;
   sortOrder: number;
+  category: string;
   createdAt: string;
 }
 
@@ -121,6 +128,11 @@ export interface Menu {
   createdAt: string;
   finalized: boolean;
   weekLabel: string | null;
+  groceryGenerated: boolean;
+  publishedAt: string | null;
+  clientToken: string | null;
+  pantryToken: string | null;
+  pantrySubmitted: boolean;
   items: MenuItem[];
 }
 

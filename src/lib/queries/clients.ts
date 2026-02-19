@@ -7,6 +7,9 @@ function mapClient(row: {
   name: string;
   itemsPerMenu: number;
   notes: string | null;
+  chefNotes: string | null;
+  servingsPerDish: number;
+  dishCount: number;
   createdAt: Date;
   updatedAt: Date;
   proteins: Array<{ protein: string }>;
@@ -27,6 +30,9 @@ function mapClient(row: {
     name: row.name,
     itemsPerMenu,
     notes: row.notes,
+    chefNotes: row.chefNotes,
+    servingsPerDish: row.servingsPerDish,
+    dishCount: row.dishCount,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     proteins: row.proteins.map((p) => p.protein),
@@ -67,6 +73,9 @@ export interface ClientInput {
   name: string;
   itemsPerMenu?: number;
   notes?: string;
+  chefNotes?: string;
+  servingsPerDish?: number;
+  dishCount?: number;
   proteins: string[];
   restrictions: string[];
   cuisinePreferences: Array<{ cuisineType: string; weight: number }>;
@@ -85,6 +94,9 @@ export async function createClient(data: ClientInput): Promise<Client> {
       name: data.name,
       itemsPerMenu,
       notes: data.notes || null,
+      chefNotes: data.chefNotes || null,
+      servingsPerDish: data.servingsPerDish ?? 4,
+      dishCount: data.dishCount ?? 3,
       proteins: {
         create: data.proteins.map((protein) => ({ id: nanoid(), protein })),
       },
@@ -120,7 +132,14 @@ export async function updateClient(id: string, data: ClientInput): Promise<Clien
   await prisma.$transaction([
     prisma.client.update({
       where: { id },
-      data: { name: data.name, itemsPerMenu, notes: data.notes || null },
+      data: {
+        name: data.name,
+        itemsPerMenu,
+        notes: data.notes || null,
+        chefNotes: data.chefNotes || null,
+        servingsPerDish: data.servingsPerDish ?? 4,
+        dishCount: data.dishCount ?? 3,
+      },
     }),
     prisma.clientProtein.deleteMany({ where: { clientId: id } }),
     prisma.clientRestriction.deleteMany({ where: { clientId: id } }),

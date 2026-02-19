@@ -1,8 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { Trash2, RefreshCw, GitMerge, X, Copy } from 'lucide-react';
+import { Trash2, RefreshCw, GitMerge, X, Copy, Printer, LayoutList, Grid3X3 } from 'lucide-react';
 import type { GroceryItem, DuplicatePair } from '@/lib/types';
+
+const CATEGORY_ORDER = ['produce', 'protein', 'dairy', 'pantry', 'other'] as const;
+const CATEGORY_LABELS: Record<string, string> = {
+  produce: 'Produce',
+  protein: 'Proteins & Meat',
+  dairy: 'Dairy',
+  pantry: 'Pantry & Dry Goods',
+  other: 'Other',
+};
 
 interface EditableRowProps {
   item: GroceryItem;
@@ -193,6 +202,7 @@ export function GroceryListSection({
   const [dismissedPairs, setDismissedPairs] = useState<Set<string>>(new Set());
   const [mergingPairKey, setMergingPairKey] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [viewByCategory, setViewByCategory] = useState(false);
 
   function handleCopy() {
     const unchecked = items.filter((i) => !i.checked);
@@ -241,18 +251,35 @@ export function GroceryListSection({
         </div>
         <div className="flex items-center gap-2">
           {items.length > 0 && (
-            <button
-              onClick={handleCopy}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded border border-border hover:bg-muted transition-colors"
-            >
-              <Copy className="h-4 w-4" />
-              {copied ? 'Copied!' : 'Copy for Notes'}
-            </button>
+            <>
+              <button
+                onClick={() => setViewByCategory((v) => !v)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded border transition-colors ${viewByCategory ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:bg-muted'}`}
+                title={viewByCategory ? 'View as flat list' : 'View by category'}
+              >
+                {viewByCategory ? <LayoutList className="h-4 w-4" /> : <Grid3X3 className="h-4 w-4" />}
+                {viewByCategory ? 'Flat List' : 'By Category'}
+              </button>
+              <button
+                onClick={handleCopy}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded border border-border hover:bg-muted transition-colors"
+              >
+                <Copy className="h-4 w-4" />
+                {copied ? 'Copied!' : 'Copy'}
+              </button>
+              <button
+                onClick={() => window.print()}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded border border-border hover:bg-muted transition-colors print:hidden"
+              >
+                <Printer className="h-4 w-4" />
+                Print
+              </button>
+            </>
           )}
           <button
             onClick={onGenerate}
             disabled={generating}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-foreground text-background text-sm font-medium rounded hover:opacity-90 disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-foreground text-background text-sm font-medium rounded hover:opacity-90 disabled:opacity-50 print:hidden"
           >
             <RefreshCw className={`h-4 w-4 ${generating ? 'animate-spin' : ''}`} />
             {generating ? 'Generating...' : 'Generate from Selections'}
@@ -264,6 +291,34 @@ export function GroceryListSection({
         <div className="border border-border rounded-lg p-8 text-center text-sm text-muted-foreground">
           No items yet. Select recipes above and click &quot;Generate from Selections&quot;,
           or paste ingredients in the section below.
+        </div>
+      ) : viewByCategory ? (
+        <div className="space-y-4">
+          {CATEGORY_ORDER.map((cat) => {
+            const catItems = items.filter((i) => i.category === cat);
+            if (catItems.length === 0) return null;
+            return (
+              <div key={cat} className="border border-border rounded-lg overflow-hidden">
+                <div className="bg-muted/70 px-4 py-2 border-b border-border">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {CATEGORY_LABELS[cat]} ({catItems.length})
+                  </h3>
+                </div>
+                <table className="w-full">
+                  <tbody>
+                    {catItems.map((item) => (
+                      <EditableRow
+                        key={item.id}
+                        item={item}
+                        onUpdate={onUpdate}
+                        onDelete={onDelete}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })}
         </div>
       ) : (
         <div className="border border-border rounded-lg overflow-hidden">

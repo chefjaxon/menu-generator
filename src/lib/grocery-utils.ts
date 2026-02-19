@@ -33,7 +33,24 @@ export function parseIngredientLine(line: string): ParsedIngredientLine {
   const trimmed = line.trim();
   if (!trimmed) return { name: '', quantity: null, unit: null };
 
-  // Regex: optional leading number (int, decimal, or fraction), optional unit token, rest is name
+  // First try: leading unicode fraction (e.g. "½ cup olive oil", "1¾ lbs beef")
+  const unicodeMatch = trimmed.match(/^([½⅓⅔¼¾⅛⅜⅝⅞]|\d+\s*[½⅓⅔¼¾⅛⅜⅝⅞])\s+([a-zA-Z]+)\s+(.+)$/);
+  if (unicodeMatch) {
+    const [, qty, maybeUnit, rest] = unicodeMatch;
+    if (UNITS.has(maybeUnit.toLowerCase())) {
+      return { quantity: qty.trim(), unit: maybeUnit.toLowerCase(), name: rest.trim() };
+    }
+    return { quantity: qty.trim(), unit: null, name: `${maybeUnit} ${rest}`.trim() };
+  }
+
+  // Leading unicode fraction with no unit
+  const unicodeNoUnit = trimmed.match(/^([½⅓⅔¼¾⅛⅜⅝⅞]|\d+\s*[½⅓⅔¼¾⅛⅜⅝⅞])\s+(.+)$/);
+  if (unicodeNoUnit) {
+    const [, qty, rest] = unicodeNoUnit;
+    return { quantity: qty.trim(), unit: null, name: rest.trim() };
+  }
+
+  // Standard: leading number (int, decimal, or fraction), optional unit token, rest is name
   const match = trimmed.match(
     /^(\d+(?:[/.]\d+)?(?:\s+\d+\/\d+)?)\s+([a-zA-Z]+)\s+(.+)$/
   );

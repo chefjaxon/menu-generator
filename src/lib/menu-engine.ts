@@ -273,13 +273,19 @@ async function generateWithComposition(
     );
   }
 
-  const menu = await createDraftMenu(client.id, allItems);
+  const itemsWithNotes = allItems.map((item) => ({
+    ...item,
+    omitNotes: omitNotesByRecipeId.get(item.recipeId) ?? [],
+  }));
 
-  // Build omitNotes keyed by menuItemId (matched via recipeId)
+  const menu = await createDraftMenu(client.id, itemsWithNotes);
+
+  // Build omitNotes keyed by menuItemId for the API response
   const omitNotes: Record<string, string[]> = {};
   for (const menuItem of menu.items) {
-    const notes = omitNotesByRecipeId.get(menuItem.recipeId);
-    if (notes) omitNotes[menuItem.id] = notes;
+    if (menuItem.omitNotes && menuItem.omitNotes.length > 0) {
+      omitNotes[menuItem.id] = menuItem.omitNotes;
+    }
   }
 
   return { menu, warnings, omitNotes };
@@ -367,13 +373,19 @@ async function generateLegacy(
     });
   }
 
-  const menu = await createDraftMenu(client.id, result);
+  const resultWithNotes = result.map((item) => ({
+    ...item,
+    omitNotes: omitNotesByRecipeId.get(item.recipeId) ?? [],
+  }));
 
-  // Build omitNotes keyed by menuItemId (matched via recipeId)
+  const menu = await createDraftMenu(client.id, resultWithNotes);
+
+  // Build omitNotes keyed by menuItemId for the API response
   const omitNotes: Record<string, string[]> = {};
   for (const menuItem of menu.items) {
-    const notes = omitNotesByRecipeId.get(menuItem.recipeId);
-    if (notes) omitNotes[menuItem.id] = notes;
+    if (menuItem.omitNotes && menuItem.omitNotes.length > 0) {
+      omitNotes[menuItem.id] = menuItem.omitNotes;
+    }
   }
 
   return { menu, warnings, omitNotes };

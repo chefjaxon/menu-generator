@@ -9,6 +9,11 @@ function mapMenu(row: {
   createdAt: Date;
   finalized: boolean;
   weekLabel: string | null;
+  groceryGenerated: boolean;
+  publishedAt: Date | null;
+  clientToken: string | null;
+  pantryToken: string | null;
+  pantrySubmitted: boolean;
   client?: { name: string };
   items: Array<{
     id: string;
@@ -17,6 +22,8 @@ function mapMenu(row: {
     selectedProtein: string | null;
     sortOrder: number;
     clientSelected: boolean;
+    omitNotes: string | null;
+    clientNote: string | null;
   }>;
 }, includeRecipes = false, recipes: Record<string, Awaited<ReturnType<typeof getRecipeById>>> = {}): Menu {
   const items: MenuItem[] = row.items.map((ir) => ({
@@ -26,6 +33,8 @@ function mapMenu(row: {
     selectedProtein: ir.selectedProtein,
     sortOrder: ir.sortOrder,
     clientSelected: ir.clientSelected,
+    omitNotes: ir.omitNotes ? JSON.parse(ir.omitNotes) as string[] : undefined,
+    clientNote: ir.clientNote,
     recipe: includeRecipes ? (recipes[ir.recipeId] || undefined) : undefined,
   }));
 
@@ -36,16 +45,32 @@ function mapMenu(row: {
     createdAt: row.createdAt.toISOString(),
     finalized: row.finalized,
     weekLabel: row.weekLabel,
+    groceryGenerated: row.groceryGenerated,
+    publishedAt: row.publishedAt ? row.publishedAt.toISOString() : null,
+    clientToken: row.clientToken,
+    pantryToken: row.pantryToken,
+    pantrySubmitted: row.pantrySubmitted,
     items,
   };
 }
 
+const MENU_SELECT_ITEMS = {
+  id: true, menuId: true, recipeId: true, selectedProtein: true,
+  sortOrder: true, clientSelected: true, omitNotes: true, clientNote: true,
+} as const;
+
 export async function getAllMenus(clientId?: string): Promise<Menu[]> {
   const rows = await prisma.menu.findMany({
     where: clientId ? { clientId } : undefined,
-    include: {
+    select: {
+      id: true, clientId: true, createdAt: true, finalized: true, weekLabel: true,
+      groceryGenerated: true, publishedAt: true, clientToken: true, pantryToken: true,
+      pantrySubmitted: true,
       client: { select: { name: true } },
-      items: { orderBy: { sortOrder: 'asc' } },
+      items: {
+        orderBy: { sortOrder: 'asc' },
+        select: MENU_SELECT_ITEMS,
+      },
     },
     orderBy: { createdAt: 'desc' },
   });
@@ -55,9 +80,15 @@ export async function getAllMenus(clientId?: string): Promise<Menu[]> {
 export async function getMenuById(id: string): Promise<Menu | null> {
   const row = await prisma.menu.findUnique({
     where: { id },
-    include: {
+    select: {
+      id: true, clientId: true, createdAt: true, finalized: true, weekLabel: true,
+      groceryGenerated: true, publishedAt: true, clientToken: true, pantryToken: true,
+      pantrySubmitted: true,
       client: { select: { name: true } },
-      items: { orderBy: { sortOrder: 'asc' } },
+      items: {
+        orderBy: { sortOrder: 'asc' },
+        select: MENU_SELECT_ITEMS,
+      },
     },
   });
   if (!row) return null;
@@ -94,7 +125,7 @@ export async function getRecentRecipeIdsForClient(clientId: string, menuCount = 
 
 export async function createDraftMenu(
   clientId: string,
-  items: Array<{ recipeId: string; selectedProtein: string | null }>
+  items: Array<{ recipeId: string; selectedProtein: string | null; omitNotes?: string[] }>
 ): Promise<Menu> {
   const menuId = nanoid();
 
@@ -120,6 +151,9 @@ export async function createDraftMenu(
             recipeId: item.recipeId,
             selectedProtein: item.selectedProtein,
             sortOrder: i,
+            omitNotes: item.omitNotes && item.omitNotes.length > 0
+              ? JSON.stringify(item.omitNotes)
+              : null,
           })),
         },
       },
@@ -177,4 +211,122 @@ export async function setMenuItemSelected(menuItemId: string, selected: boolean)
   } catch {
     return false;
   }
+}
+
+export async function publishMenu(menuId: string): Promise<{ clientToken: string } | null> {
+  const token = nanoid(24);
+  try {
+    await prisma.menu.update({
+      where: { id: menuId },
+      data: { publishedAt: new Date(), clientToken: token },
+    });
+    return { clientToken: token };
+  } catch {
+    return null;
+  }
+}
+
+export async function getMenuByClientToken(token: string): Promise<Menu | null> {
+  const row = await prisma.menu.findUnique({
+    where: { clientToken: token },
+    select: {
+      id: true, clientId: true, createdAt: true, finalized: true, weekLabel: true,
+      groceryGenerated: true, publishedAt: true, clientToken: true, pantryToken: true,
+      pantrySubmitted: true,
+      client: { select: { name: true } },
+      items: {
+        orderBy: { sortOrder: 'asc' },
+        select: MENU_SELECT_ITEMS,
+      },
+    },
+  });
+  if (!row) return null;
+
+  const recipeIds = [...new Set(row.items.map((i) => i.recipeId))];
+  const recipeList = await Promise.all(recipeIds.map((rid) => getRecipeById(rid)));
+  const recipes: Record<string, Awaited<ReturnType<typeof getRecipeById>>> = {};
+  for (let i = 0; i < recipeIds.length; i++) {
+    recipes[recipeIds[i]] = recipeList[i];
+  }
+
+  return mapMenu(row, true, recipes);
+}
+
+export async function submitClientSelections(
+  menuId: string,
+  selections: Array<{ menuItemId: string; note?: string }>
+): Promise<boolean> {
+  try {
+    // First clear all selections for this menu
+    await prisma.menuItem.updateMany({
+      where: { menuId },
+      data: { clientSelected: false, clientNote: null },
+    });
+    // Set selected items
+    for (const sel of selections) {
+      await prisma.menuItem.update({
+        where: { id: sel.menuItemId },
+        data: { clientSelected: true, clientNote: sel.note || null },
+      });
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function sendPantryLink(menuId: string): Promise<{ pantryToken: string } | null> {
+  const token = nanoid(24);
+  try {
+    await prisma.menu.update({
+      where: { id: menuId },
+      data: { pantryToken: token },
+    });
+    return { pantryToken: token };
+  } catch {
+    return null;
+  }
+}
+
+export async function getMenuByPantryToken(token: string): Promise<Menu | null> {
+  const row = await prisma.menu.findUnique({
+    where: { pantryToken: token },
+    select: {
+      id: true, clientId: true, createdAt: true, finalized: true, weekLabel: true,
+      groceryGenerated: true, publishedAt: true, clientToken: true, pantryToken: true,
+      pantrySubmitted: true,
+      client: { select: { name: true } },
+      items: {
+        orderBy: { sortOrder: 'asc' },
+        select: MENU_SELECT_ITEMS,
+      },
+    },
+  });
+  if (!row) return null;
+  return mapMenu(row);
+}
+
+export async function submitPantryChecklist(
+  menuId: string,
+  checkedItemIds: string[]
+): Promise<boolean> {
+  try {
+    await prisma.$transaction([
+      prisma.groceryItem.updateMany({
+        where: { menuId, id: { in: checkedItemIds } },
+        data: { checked: true },
+      }),
+      prisma.menu.update({
+        where: { id: menuId },
+        data: { pantrySubmitted: true },
+      }),
+    ]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function getMenusByClientId(clientId: string): Promise<Menu[]> {
+  return getAllMenus(clientId);
 }

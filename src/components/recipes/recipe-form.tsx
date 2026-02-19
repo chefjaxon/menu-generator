@@ -27,6 +27,7 @@ interface FormData {
   cuisineType: string;
   itemType: string;
   servingSize: number;
+  recipeKeeperUrl: string;
   ingredients: IngredientField[];
   proteinSwaps: string[];
   tags: string[];
@@ -65,6 +66,7 @@ export function RecipeForm({ recipe }: { recipe?: Recipe }) {
     cuisineType: recipe?.cuisineType ?? 'american',
     itemType: recipe?.itemType ?? 'meal',
     servingSize: recipe?.servingSize ?? 1,
+    recipeKeeperUrl: recipe?.recipeKeeperUrl ?? '',
     ingredients: recipe?.ingredients?.map((i) => ({
       name: i.name,
       quantity: i.quantity || '',
@@ -241,6 +243,17 @@ export function RecipeForm({ recipe }: { recipe?: Recipe }) {
           onChange={(e) => updateField('name', e.target.value)}
           className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           placeholder="e.g. Grilled Chicken with Roasted Vegetables"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium mb-1">Recipe Keeper Link</label>
+        <input
+          type="url"
+          value={form.recipeKeeperUrl}
+          onChange={(e) => updateField('recipeKeeperUrl', e.target.value)}
+          className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          placeholder="https://recipekeeperonline.com/recipe/..."
         />
       </div>
 

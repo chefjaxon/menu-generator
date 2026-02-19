@@ -57,6 +57,20 @@ export function ClientSelectionSection({ menuItems, onToggle }: Props) {
                     )}
                   </div>
                 )}
+                {item.omitNotes && item.omitNotes.length > 0 && (
+                  <ul className="mt-1 space-y-0.5">
+                    {item.omitNotes.map((note, i) => (
+                      <li key={i} className="text-xs text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded inline-block mr-1">
+                        {note}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {item.clientNote && (
+                  <p className="mt-1 text-xs text-blue-700 italic">
+                    Client note: {item.clientNote}
+                  </p>
+                )}
               </div>
             </label>
           );

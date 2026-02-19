@@ -8,15 +8,16 @@ datasource db {
 }
 
 model Recipe {
-  id           String   @id
-  name         String
-  description  String?
-  instructions String?
-  cuisineType  String   @map("cuisine_type")
-  itemType     String   @map("item_type") @default("meal")
-  servingSize  Int      @map("serving_size") @default(1)
-  createdAt    DateTime @map("created_at") @default(now())
-  updatedAt    DateTime @map("updated_at") @updatedAt
+  id               String   @id
+  name             String
+  description      String?
+  instructions     String?
+  cuisineType      String   @map("cuisine_type")
+  itemType         String   @map("item_type") @default("meal")
+  servingSize      Int      @map("serving_size") @default(1)
+  recipeKeeperUrl  String?  @map("recipe_keeper_url")
+  createdAt        DateTime @map("created_at") @default(now())
+  updatedAt        DateTime @map("updated_at") @updatedAt
 
   ingredients   RecipeIngredient[]
   proteinSwaps  RecipeProteinSwap[]
@@ -74,18 +75,22 @@ model RecipeTag {
 }
 
 model Client {
-  id           String   @id
-  name         String
-  itemsPerMenu Int      @map("items_per_menu") @default(5)
-  notes        String?
-  createdAt    DateTime @map("created_at") @default(now())
-  updatedAt    DateTime @map("updated_at") @updatedAt
+  id              String   @id
+  name            String
+  itemsPerMenu    Int      @map("items_per_menu") @default(5)
+  notes           String?
+  chefNotes       String?  @map("chef_notes")
+  servingsPerDish Int      @map("servings_per_dish") @default(4)
+  dishCount       Int      @map("dish_count") @default(3)
+  createdAt       DateTime @map("created_at") @default(now())
+  updatedAt       DateTime @map("updated_at") @updatedAt
 
   proteins           ClientProtein[]
   restrictions       ClientRestriction[]
   cuisinePreferences ClientCuisinePreference[]
   menuComposition    ClientMenuComposition[]
   menus              Menu[]
+  account            ClientAccount?
 
   @@map("clients")
 }
@@ -137,11 +142,16 @@ model ClientMenuComposition {
 }
 
 model Menu {
-  id        String   @id
-  clientId  String   @map("client_id")
-  createdAt DateTime @map("created_at") @default(now())
-  finalized Boolean  @default(false)
-  weekLabel String?  @map("week_label")
+  id               String    @id
+  clientId         String    @map("client_id")
+  createdAt        DateTime  @map("created_at") @default(now())
+  finalized        Boolean   @default(false)
+  weekLabel        String?   @map("week_label")
+  groceryGenerated Boolean   @default(false) @map("grocery_generated")
+  publishedAt      DateTime? @map("published_at")
+  clientToken      String?   @unique @map("client_token")
+  pantryToken      String?   @unique @map("pantry_token")
+  pantrySubmitted  Boolean   @default(false) @map("pantry_submitted")
 
   client       Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
   items        MenuItem[]
@@ -157,6 +167,8 @@ model MenuItem {
   selectedProtein String? @map("selected_protein")
   sortOrder       Int     @map("sort_order") @default(0)
   clientSelected  Boolean @default(false) @map("client_selected")
+  omitNotes       String? @map("omit_notes")
+  clientNote      String? @map("client_note")
 
   menu   Menu   @relation(fields: [menuId], references: [id], onDelete: Cascade)
   recipe Recipe @relation(fields: [recipeId], references: [id])
@@ -168,11 +180,37 @@ model User {
   id           String   @id
   username     String   @unique
   passwordHash String   @map("password_hash")
+  role         String   @default("admin")
   createdAt    DateTime @map("created_at") @default(now())
 
   sessions Session[]
 
   @@map("users")
+}
+
+model ClientAccount {
+  id           String   @id
+  clientId     String   @unique @map("client_id")
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  client   Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  sessions ClientSession[]
+
+  @@map("client_accounts")
+}
+
+model ClientSession {
+  id              String   @id
+  clientAccountId String   @map("client_account_id")
+  token           String   @unique
+  expiresAt       DateTime @map("expires_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  account ClientAccount @relation(fields: [clientAccountId], references: [id], onDelete: Cascade)
+
+  @@map("client_sessions")
 }
 
 model Session {
@@ -206,6 +244,7 @@ model GroceryItem {
   recipeItemId String?  @map("recipe_item_id")
   notes        String?
   sortOrder    Int      @map("sort_order") @default(0)
+  category     String   @default("other")
   createdAt    DateTime @map("created_at") @default(now())
 
   menu Menu @relation(fields: [menuId], references: [id], onDelete: Cascade)

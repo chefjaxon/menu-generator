@@ -29,3 +29,48 @@ body {
   background: var(--color-background);
   color: var(--color-foreground);
 }
+
+@media print {
+  /* Hide everything except the grocery list content */
+  nav, aside, header,
+  [data-sidebar], [data-print-hide],
+  .print\\:hidden {
+    display: none !important;
+  }
+
+  /* Ensure the main content takes full width */
+  main {
+    margin: 0 !important;
+    padding: 1rem !important;
+    max-width: 100% !important;
+  }
+
+  /* Page breaks between category sections */
+  [data-print-section] {
+    break-inside: avoid;
+    margin-bottom: 1rem;
+  }
+
+  /* Clean up borders for print */
+  * {
+    box-shadow: none !important;
+  }
+
+  /* Hide action buttons, paste panel, removed items, duplicate alerts */
+  button, [data-print-hide] {
+    display: none !important;
+  }
+
+  /* Show checkboxes as print-friendly indicators */
+  input[type="checkbox"] {
+    width: 12px;
+    height: 12px;
+  }
+
+  /* Make inputs readable as text */
+  input[type="text"], input {
+    border: none !important;
+    outline: none !important;
+    padding: 0 !important;
+  }
+}

@@ -80,6 +80,7 @@ export function MenuHistoryTable({
                 <th className="text-left px-4 py-3 font-medium">Client</th>
                 <th className="text-left px-4 py-3 font-medium">Week</th>
                 <th className="text-left px-4 py-3 font-medium">Items</th>
+                <th className="text-left px-4 py-3 font-medium">Status</th>
                 <th className="text-left px-4 py-3 font-medium">Created</th>
                 <th className="text-right px-4 py-3 font-medium">Actions</th>
               </tr>
@@ -101,6 +102,17 @@ export function MenuHistoryTable({
                       <ChefHat className="h-3.5 w-3.5" />
                       {menu.items.length} items
                     </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    {menu.groceryGenerated ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                        Grocery Ready
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                        Approved
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {new Date(menu.createdAt).toLocaleDateString('en-US', {
