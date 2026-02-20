@@ -42,38 +42,45 @@ const RECIPE_TAG_SUGGESTIONS = [
 ];
 
 // Keywords that map ingredient text to contains tags
+// Use exact/whole-word strings — matching is done with word-boundary regex
 const TAG_KEYWORD_MAP: Record<string, string[]> = {
   dairy: ['milk', 'cream', 'butter', 'cheese', 'yogurt', 'parmesan', 'mozzarella', 'cheddar', 'ricotta', 'brie', 'feta', 'gouda', 'half and half', 'half & half', 'sour cream', 'ghee', 'whey', 'lactose', 'dairy'],
-  gluten: ['flour', 'bread', 'pasta', 'spaghetti', 'noodle', 'wheat', 'barley', 'rye', 'soy sauce', 'panko', 'breadcrumb', 'crouton', 'tortilla', 'pita', 'couscous', 'semolina', 'gluten'],
+  gluten: ['flour', 'bread', 'pasta', 'spaghetti', 'noodle', 'wheat', 'barley', 'rye', 'panko', 'breadcrumb', 'crouton', 'pita', 'couscous', 'semolina', 'gluten'],
   nuts: ['almond', 'walnut', 'pecan', 'cashew', 'pistachio', 'hazelnut', 'macadamia', 'pine nut', 'peanut', 'nut butter', 'almond milk', 'tahini'],
-  soy: ['soy', 'tofu', 'edamame', 'miso', 'tempeh', 'soy sauce', 'tamari', 'soybean'],
-  eggs: ['egg', 'eggs', 'yolk', 'egg white'],
+  soy: ['tofu', 'edamame', 'miso', 'tempeh', 'soy sauce', 'tamari', 'soybean', 'soy milk'],
+  eggs: ['egg', 'eggs', 'egg yolk', 'egg white'],
   beef: ['beef', 'steak', 'ground beef', 'brisket', 'chuck', 'sirloin', 'ribeye', 'short rib', 'veal'],
-  pork: ['pork', 'bacon', 'ham', 'pancetta', 'prosciutto', 'sausage', 'chorizo', 'salami', 'pepperoni', 'lard', 'pork chop', 'pulled pork', 'ribs'],
-  shellfish: ['shrimp', 'crab', 'lobster', 'scallop', 'clam', 'mussel', 'oyster', 'prawn', 'crayfish', 'langoustine', 'shellfish'],
+  pork: ['pork', 'bacon', 'ham', 'pancetta', 'prosciutto', 'sausage', 'chorizo', 'salami', 'pepperoni', 'lard', 'pulled pork'],
+  shellfish: ['shrimp', 'crab', 'lobster', 'scallop', 'clam', 'mussel', 'oyster', 'prawn', 'crayfish', 'langoustine'],
   cilantro: ['cilantro'],
-  mushrooms: ['mushroom', 'portobello', 'shiitake', 'cremini', 'button mushroom', 'oyster mushroom'],
-  olives: ['olive', 'kalamata', 'tapenade'],
+  mushrooms: ['mushroom', 'portobello', 'shiitake', 'cremini'],
+  olives: ['kalamata', 'black olive', 'green olive', 'sliced olive', 'whole olive', 'olive tapenade'],
   eggplant: ['eggplant', 'aubergine'],
   spinach: ['spinach'],
   beets: ['beet', 'beetroot'],
-  corn: ['corn', 'maize', 'hominy', 'grits', 'polenta', 'corn tortilla', 'cornmeal'],
-  cornstarch: ['cornstarch', 'corn starch', 'corn flour'],
-  'white sugar': ['white sugar', 'granulated sugar', 'cane sugar', 'sugar'],
+  corn: ['corn', 'hominy', 'grits', 'polenta', 'cornmeal', 'corn tortilla', 'maize'],
+  cornstarch: ['cornstarch', 'corn starch'],
+  'white sugar': ['white sugar', 'granulated sugar', 'cane sugar'],
   honey: ['honey'],
-  'white flour': ['white flour', 'all-purpose flour', 'all purpose flour', 'ap flour'],
+  'white flour': ['white flour', 'all-purpose flour', 'all purpose flour'],
   'white rice': ['white rice', 'jasmine rice', 'basmati rice'],
-  'fermented foods': ['miso', 'kimchi', 'sauerkraut', 'kefir', 'kombucha', 'tempeh', 'vinegar', 'sourdough'],
+  'fermented foods': ['kimchi', 'sauerkraut', 'kefir', 'kombucha', 'sourdough'],
   coffee: ['coffee', 'espresso', 'cold brew', 'instant coffee'],
 };
 
 function detectTagsFromIngredients(ingredients: IngredientField[]): string[] {
-  const ingredientText = ingredients
-    .map((i) => i.name.toLowerCase())
-    .join(' | ');
+  const ingredientNames = ingredients.map((i) => i.name.toLowerCase());
 
   return Object.entries(TAG_KEYWORD_MAP)
-    .filter(([, keywords]) => keywords.some((kw) => ingredientText.includes(kw)))
+    .filter(([, keywords]) =>
+      ingredientNames.some((name) =>
+        keywords.some((kw) => {
+          // Match whole word/phrase — not as a substring of another word
+          const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          return new RegExp(`(?<![a-z])${escaped}(?![a-z])`, 'i').test(name);
+        })
+      )
+    )
     .map(([tag]) => tag);
 }
 
