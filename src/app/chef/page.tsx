@@ -4,6 +4,7 @@ import { ShoppingCart, CalendarDays } from 'lucide-react';
 import { validateChefSession } from '@/lib/chef-auth';
 import { prisma } from '@/lib/prisma';
 import { ChefLogoutButton } from './ChefLogoutButton';
+import { ChefScheduleCard } from './ChefScheduleCard';
 
 export const dynamic = 'force-dynamic';
 
@@ -61,13 +62,50 @@ export default async function ChefDashboardPage() {
             scheduledDate: { gte: today, lte: twoWeeks },
           },
           include: {
-            client: { select: { id: true, name: true } },
+            client: {
+              select: {
+                id: true,
+                name: true,
+                chefNotes: true,
+                servingsPerDish: true,
+                dishCount: true,
+                proteins: { select: { protein: true }, orderBy: { protein: 'asc' } },
+                restrictions: { select: { restriction: true }, orderBy: { restriction: 'asc' } },
+                cuisinePreferences: {
+                  select: { cuisineType: true, weight: true },
+                  orderBy: { weight: 'desc' },
+                },
+              },
+            },
             menu: {
               select: {
                 id: true,
                 weekLabel: true,
                 groceryApproved: true,
                 publishedAt: true,
+                pantrySubmitted: true,
+                groceryItems: {
+                  where: { source: { not: 'removed' } },
+                  orderBy: [{ category: 'asc' }, { sortOrder: 'asc' }],
+                  select: {
+                    id: true,
+                    name: true,
+                    quantity: true,
+                    unit: true,
+                    checked: true,
+                    category: true,
+                    notes: true,
+                  },
+                },
+                items: {
+                  where: { clientSelected: true },
+                  select: {
+                    id: true,
+                    clientNote: true,
+                    omitNotes: true,
+                    recipe: { select: { name: true } },
+                  },
+                },
               },
             },
           },
@@ -100,44 +138,14 @@ export default async function ChefDashboardPage() {
               <p className="text-sm text-muted-foreground">No upcoming appointments.</p>
             ) : (
               <div className="space-y-3">
-                {schedules.map((s) => {
-                  const linkedMenu = s.menu;
-                  const menuReady = linkedMenu && linkedMenu.groceryApproved && linkedMenu.publishedAt;
-                  return (
-                    <div key={s.id} className="border border-border rounded-xl p-4">
-                      <p className="text-xs text-muted-foreground mb-1">
-                        {formatDate(s.scheduledDate)} · {formatTime(s.scheduledTime)}
-                      </p>
-                      <p className="font-medium text-sm">{s.client.name}</p>
-                      {menuReady ? (
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          <Link
-                            href={`/chef/grocery/${linkedMenu.id}`}
-                            className="text-xs px-2.5 py-1 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
-                          >
-                            Grocery List
-                          </Link>
-                          <Link
-                            href={`/chef/client/${s.client.id}`}
-                            className="text-xs px-2.5 py-1 border border-border rounded-md hover:bg-muted transition-colors"
-                          >
-                            Client Profile
-                          </Link>
-                          <Link
-                            href={`/chef/grocery/${linkedMenu.id}#recipes`}
-                            className="text-xs px-2.5 py-1 border border-border rounded-md hover:bg-muted transition-colors"
-                          >
-                            Recipes
-                          </Link>
-                        </div>
-                      ) : linkedMenu ? (
-                        <p className="text-xs text-amber-600 mt-1">Menu in progress</p>
-                      ) : (
-                        <p className="text-xs text-muted-foreground mt-1">Menu not yet available</p>
-                      )}
-                    </div>
-                  );
-                })}
+                {schedules.map((s) => (
+                  <ChefScheduleCard
+                    key={s.id}
+                    schedule={s}
+                    formattedDate={formatDate(s.scheduledDate)}
+                    formattedTime={formatTime(s.scheduledTime)}
+                  />
+                ))}
               </div>
             )}
           </div>
