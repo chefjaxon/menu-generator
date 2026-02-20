@@ -10,6 +10,9 @@ import type { Recipe, IngredientRole } from '@/lib/types';
 interface SwapField {
   restriction: string;
   substituteIngredient: string;
+  substituteQty: string;
+  substituteUnit: string;
+  priority: number;
 }
 
 interface IngredientField {
@@ -63,10 +66,13 @@ export function RecipeForm({ recipe }: { recipe?: Recipe }) {
       name: i.name,
       quantity: i.quantity || '',
       unit: i.unit || '',
-      role: (i.role === 'optional' ? 'optional' : 'core') as IngredientRole,
+      role: (['optional', 'garnish'].includes(i.role) ? i.role : 'core') as IngredientRole,
       swaps: i.swaps?.map((s) => ({
         restriction: s.restriction,
         substituteIngredient: s.substituteIngredient,
+        substituteQty: s.substituteQty ?? '',
+        substituteUnit: s.substituteUnit ?? '',
+        priority: s.priority ?? 0,
       })) ?? [],
     })) ?? [emptyIngredient()],
     proteinSwaps: recipe?.proteinSwaps ?? [],
@@ -96,7 +102,7 @@ export function RecipeForm({ recipe }: { recipe?: Recipe }) {
       ingredients: prev.ingredients.map((ing, i) => {
         if (i !== index) return ing;
         const updated = { ...ing, [field]: value };
-        // When switching to optional, clear swaps (swaps only make sense on core)
+        // When switching to optional, clear swaps (swaps only make sense on core/garnish)
         if (field === 'role' && value === 'optional') updated.swaps = [];
         return updated;
       }),
@@ -108,7 +114,7 @@ export function RecipeForm({ recipe }: { recipe?: Recipe }) {
       ...prev,
       ingredients: prev.ingredients.map((ing, i) =>
         i === ingIndex
-          ? { ...ing, swaps: [...ing.swaps, { restriction: '', substituteIngredient: '' }] }
+          ? { ...ing, swaps: [...ing.swaps, { restriction: '', substituteIngredient: '', substituteQty: '', substituteUnit: '', priority: 0 }] }
           : ing
       ),
     }));
@@ -125,7 +131,7 @@ export function RecipeForm({ recipe }: { recipe?: Recipe }) {
     }));
   }
 
-  function updateSwap(ingIndex: number, swapIndex: number, field: keyof SwapField, value: string) {
+  function updateSwap(ingIndex: number, swapIndex: number, field: keyof SwapField, value: string | number) {
     setForm((prev) => ({
       ...prev,
       ingredients: prev.ingredients.map((ing, i) =>
@@ -221,7 +227,15 @@ export function RecipeForm({ recipe }: { recipe?: Recipe }) {
       ...form,
       ingredients: filteredIngredients.map((ing) => ({
         ...ing,
-        swaps: ing.swaps.filter((s) => s.restriction.trim() && s.substituteIngredient.trim()),
+        swaps: ing.swaps
+          .filter((s) => s.restriction.trim() && s.substituteIngredient.trim())
+          .map((s) => ({
+            restriction: s.restriction.trim(),
+            substituteIngredient: s.substituteIngredient.trim(),
+            substituteQty: s.substituteQty.trim() || null,
+            substituteUnit: s.substituteUnit.trim() || null,
+            priority: s.priority,
+          })),
       })),
     };
 
@@ -416,11 +430,12 @@ export function RecipeForm({ recipe }: { recipe?: Recipe }) {
                 <select
                   value={ing.role}
                   onChange={(e) => updateIngredient(i, 'role', e.target.value)}
-                  title="Core = recipe fails without it. Optional = can be omitted."
+                  title="Core = required. Optional = omit if restricted. Garnish = always on grocery list, omit only if restricted."
                   className="w-28 px-2 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring text-muted-foreground"
                 >
                   <option value="core">Core</option>
                   <option value="optional">Optional</option>
+                  <option value="garnish">Garnish</option>
                 </select>
                 {form.ingredients.length > 1 && (
                   <button
@@ -433,34 +448,64 @@ export function RecipeForm({ recipe }: { recipe?: Recipe }) {
                 )}
               </div>
 
-              {/* Swaps — only shown for core ingredients */}
-              {ing.role === 'core' && (
-                <div className="pl-2 space-y-1.5">
+              {/* Swaps — shown for core and garnish ingredients */}
+              {(ing.role === 'core' || ing.role === 'garnish') && (
+                <div className="pl-2 space-y-2">
                   {ing.swaps.map((swap, si) => (
-                    <div key={si} className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground w-16 shrink-0">If restricted:</span>
-                      <input
-                        type="text"
-                        value={swap.restriction}
-                        onChange={(e) => updateSwap(i, si, 'restriction', e.target.value)}
-                        placeholder="e.g. dairy"
-                        className="w-28 px-2 py-1 border border-border rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-ring"
-                      />
-                      <span className="text-xs text-muted-foreground">→</span>
-                      <input
-                        type="text"
-                        value={swap.substituteIngredient}
-                        onChange={(e) => updateSwap(i, si, 'substituteIngredient', e.target.value)}
-                        placeholder="substitute ingredient"
-                        className="flex-1 px-2 py-1 border border-border rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-ring"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeSwap(i, si)}
-                        className="p-1 text-muted-foreground hover:text-destructive"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
+                    <div key={si} className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground w-16 shrink-0">If restricted:</span>
+                        <input
+                          type="text"
+                          value={swap.restriction}
+                          onChange={(e) => updateSwap(i, si, 'restriction', e.target.value)}
+                          placeholder="e.g. dairy"
+                          className="w-28 px-2 py-1 border border-border rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-ring"
+                        />
+                        <span className="text-xs text-muted-foreground">→</span>
+                        <input
+                          type="text"
+                          value={swap.substituteIngredient}
+                          onChange={(e) => updateSwap(i, si, 'substituteIngredient', e.target.value)}
+                          placeholder="substitute ingredient"
+                          className="flex-1 px-2 py-1 border border-border rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-ring"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeSwap(i, si)}
+                          className="p-1 text-muted-foreground hover:text-destructive"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-2 pl-20">
+                        <input
+                          type="text"
+                          value={swap.substituteQty}
+                          onChange={(e) => updateSwap(i, si, 'substituteQty', e.target.value)}
+                          placeholder="Swap qty"
+                          title="Leave blank to use original quantity"
+                          className="w-20 px-2 py-1 border border-border rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-ring"
+                        />
+                        <input
+                          type="text"
+                          value={swap.substituteUnit}
+                          onChange={(e) => updateSwap(i, si, 'substituteUnit', e.target.value)}
+                          placeholder="Swap unit"
+                          title="Leave blank to use original unit"
+                          className="w-20 px-2 py-1 border border-border rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-ring"
+                        />
+                        <span className="text-xs text-muted-foreground">Priority:</span>
+                        <input
+                          type="number"
+                          min={0}
+                          max={10}
+                          value={swap.priority}
+                          onChange={(e) => updateSwap(i, si, 'priority', parseInt(e.target.value) || 0)}
+                          title="Higher priority wins when multiple swaps apply"
+                          className="w-14 px-2 py-1 border border-border rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-ring"
+                        />
+                      </div>
                     </div>
                   ))}
                   <button

@@ -7,13 +7,16 @@ export const itemTypeEnum = z.enum(['meal', 'sweet-snack', 'savory-snack']);
 const swapSchema = z.object({
   substituteIngredient: z.string().min(1, 'Substitute ingredient is required').max(200),
   restriction: z.string().min(1, 'Restriction is required').max(100),
+  priority: z.number().int().min(0).max(10).optional().default(0),
+  substituteQty: z.string().max(100).optional().nullable(),
+  substituteUnit: z.string().max(50).optional().nullable(),
 });
 
 const ingredientSchema = z.object({
   name: z.string().min(1, 'Ingredient name is required'),
   quantity: z.string().optional().default(''),
   unit: z.string().optional().default(''),
-  role: z.enum(['core', 'optional']).optional().default('core'),
+  role: z.enum(['core', 'optional', 'garnish']).optional().default('core'),
   swaps: z.array(swapSchema).optional().default([]),
 });
 

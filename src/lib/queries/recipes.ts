@@ -21,7 +21,7 @@ function mapRecipe(row: {
     role: string;
     sortOrder: number;
     recipeId: string;
-    swaps: Array<{ id: string; substituteIngredient: string; restriction: string; recipeIngredientId: string }>;
+    swaps: Array<{ id: string; substituteIngredient: string; substituteQty: string | null; substituteUnit: string | null; restriction: string; priority: number; recipeIngredientId: string }>;
   }>;
   proteinSwaps: Array<{ protein: string }>;
 }): Recipe {
@@ -45,7 +45,10 @@ function mapRecipe(row: {
       swaps: i.swaps.map((s) => ({
         id: s.id,
         substituteIngredient: s.substituteIngredient,
+        substituteQty: s.substituteQty ?? null,
+        substituteUnit: s.substituteUnit ?? null,
         restriction: s.restriction,
+        priority: s.priority ?? 0,
       })),
       sortOrder: i.sortOrder,
     })),
@@ -102,9 +105,17 @@ export interface RecipeInput {
     quantity?: string;
     unit?: string;
     role?: IngredientRole;
-    swaps?: Array<{ substituteIngredient: string; restriction: string }>;
+    swaps?: Array<{ substituteIngredient: string; restriction: string; priority?: number; substituteQty?: string | null; substituteUnit?: string | null }>;
   }>;
   proteinSwaps: string[];
+}
+
+export interface SwapInput {
+  substituteIngredient: string;
+  restriction: string;
+  priority?: number;
+  substituteQty?: string | null;
+  substituteUnit?: string | null;
 }
 
 export async function createRecipe(data: RecipeInput): Promise<Recipe> {
@@ -138,7 +149,7 @@ export async function createRecipe(data: RecipeInput): Promise<Recipe> {
   });
 
   // Add swaps — fetch the newly created ingredient IDs ordered by sortOrder
-  const swapsToCreate: Array<{ id: string; recipeIngredientId: string; substituteIngredient: string; restriction: string }> = [];
+  const swapsToCreate: Array<{ id: string; recipeIngredientId: string; substituteIngredient: string; substituteQty: string | null; substituteUnit: string | null; restriction: string; priority: number }> = [];
   const createdIngredients = await prisma.recipeIngredient.findMany({
     where: { recipeId: id },
     orderBy: { sortOrder: 'asc' },
@@ -152,7 +163,10 @@ export async function createRecipe(data: RecipeInput): Promise<Recipe> {
         id: nanoid(),
         recipeIngredientId: dbIng.id,
         substituteIngredient: swap.substituteIngredient,
+        substituteQty: swap.substituteQty ?? null,
+        substituteUnit: swap.substituteUnit ?? null,
         restriction: swap.restriction,
+        priority: swap.priority ?? 0,
       });
     }
   }
@@ -200,7 +214,7 @@ export async function updateRecipe(id: string, data: RecipeInput): Promise<Recip
   ]);
 
   // Add swaps after transaction (need freshly created ingredient IDs)
-  const swapsToCreate: Array<{ id: string; recipeIngredientId: string; substituteIngredient: string; restriction: string }> = [];
+  const swapsToCreate: Array<{ id: string; recipeIngredientId: string; substituteIngredient: string; substituteQty: string | null; substituteUnit: string | null; restriction: string; priority: number }> = [];
   const createdIngredients = await prisma.recipeIngredient.findMany({
     where: { recipeId: id },
     orderBy: { sortOrder: 'asc' },
@@ -214,7 +228,10 @@ export async function updateRecipe(id: string, data: RecipeInput): Promise<Recip
         id: nanoid(),
         recipeIngredientId: dbIng.id,
         substituteIngredient: swap.substituteIngredient,
+        substituteQty: swap.substituteQty ?? null,
+        substituteUnit: swap.substituteUnit ?? null,
         restriction: swap.restriction,
+        priority: swap.priority ?? 0,
       });
     }
   }

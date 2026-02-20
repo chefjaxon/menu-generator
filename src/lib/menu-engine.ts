@@ -2,6 +2,7 @@ import { prisma } from './prisma';
 import { getClientById } from './queries/clients';
 import { getAllRecipes } from './queries/recipes';
 import { getRecentRecipeIdsForClient, createDraftMenu } from './queries/menus';
+import { canonicalizeRestriction, ingredientMatchesRestriction } from './restriction-utils';
 import type { Recipe, GenerateResult, SwapSuggestion, Client } from './types';
 
 interface ScoredRecipe {
@@ -15,30 +16,36 @@ type EligibilityResult =
   | { eligible: true; omitNotes: string[] }
   | { eligible: false };
 
-function checkIngredientEligibility(recipe: Recipe, clientExclusions: string[]): EligibilityResult {
-  if (clientExclusions.length === 0) return { eligible: true, omitNotes: [] };
+function checkIngredientEligibility(
+  recipe: Recipe,
+  clientExclusions: string[]
+): EligibilityResult {
+  if (clientExclusions.length === 0) {
+    return { eligible: true, omitNotes: [] };
+  }
 
   const omitNotes: string[] = [];
 
   for (const ingredient of recipe.ingredients) {
-    const nameNorm = ingredient.name.toLowerCase().trim();
     for (const exclusion of clientExclusions) {
-      const exNorm = exclusion.toLowerCase().trim();
-      if (nameNorm.includes(exNorm) || exNorm.includes(nameNorm)) {
-        if (ingredient.role === 'optional') {
-          omitNotes.push(`Omit ${ingredient.name} (${exclusion})`);
-          continue;
-        }
-        // core ingredient — check for an approved swap for this restriction
-        const swap = ingredient.swaps.find(
-          (s) => s.restriction.toLowerCase().trim() === exNorm
-        );
-        if (swap) {
-          omitNotes.push(`Swap ${ingredient.name} → ${swap.substituteIngredient} (${exclusion})`);
-        } else {
-          return { eligible: false };  // core, no swap → hard block
-        }
+      if (!ingredientMatchesRestriction(ingredient.name, exclusion)) continue;
+
+      if (ingredient.role === 'optional' || ingredient.role === 'garnish') {
+        omitNotes.push(`Omit ${ingredient.name} (${exclusion})`);
+        break; // ingredient handled — move to next ingredient
       }
+
+      // core ingredient — find best swap by priority descending
+      const swap = ingredient.swaps
+        .filter((s) => canonicalizeRestriction(s.restriction) === exclusion)
+        .sort((a, b) => b.priority - a.priority)[0];
+
+      if (swap) {
+        omitNotes.push(`Swap ${ingredient.name} → ${swap.substituteIngredient} (${exclusion})`);
+      } else {
+        return { eligible: false }; // core, no swap → hard block
+      }
+      break; // handled — move to next ingredient
     }
   }
 
@@ -55,9 +62,10 @@ async function getEligibleRecipes(client: Client): Promise<{ eligible: EligibleR
   const warnings: string[] = [];
   const eligible: EligibleRecipe[] = [];
 
+  const clientExclusions = client.restrictions.map((r) => canonicalizeRestriction(r));
+
   for (const recipe of allRecipes) {
-    // Ingredient-level role check — matches client restrictions directly against ingredient names
-    const ingredientResult = checkIngredientEligibility(recipe, client.restrictions);
+    const ingredientResult = checkIngredientEligibility(recipe, clientExclusions);
     if (!ingredientResult.eligible) continue;
 
     if (recipe.proteinSwaps.length > 0) {

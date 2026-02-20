@@ -6,6 +6,7 @@ import {
   applyClaudeGrayZoneNormalization,
 } from '../grocery-utils';
 import { classifyIngredient } from '../ingredient-categories';
+import { canonicalizeRestriction, ingredientMatchesRestriction } from '../restriction-utils';
 import type { GroceryItem, RemovedItem, GenerateGroceryResponse } from '../types';
 
 function mapGroceryItem(row: {
@@ -191,7 +192,9 @@ export async function generateGroceryItemsFromMenu(menuId: string): Promise<Gene
       client: { select: { restrictions: { select: { restriction: true } } } },
     },
   });
-  const clientRestrictions = menu?.client.restrictions.map((r) => r.restriction.toLowerCase().trim()) ?? [];
+  const clientRestrictions = (menu?.client.restrictions ?? [])
+    .map((r) => canonicalizeRestriction(r.restriction))
+    .filter(Boolean);
 
   const menuItems = await prisma.menuItem.findMany({
     where: { menuId, clientSelected: true },
@@ -229,29 +232,32 @@ export async function generateGroceryItemsFromMenu(menuId: string): Promise<Gene
     }
 
     for (const ing of menuItem.recipe.ingredients) {
-      // Skip ingredient if its name matches a non-selected protein
+      // Skip ingredient if its name matches a non-selected protein (word-boundary match)
       if (nonSelectedProteins.length > 0) {
-        const ingNameNorm = ing.name.toLowerCase().trim();
         const isNonSelectedProtein = nonSelectedProteins.some(
-          (p) => ingNameNorm.includes(p) || p.includes(ingNameNorm)
+          (p) => ingredientMatchesRestriction(ing.name, p)
         );
         if (isNonSelectedProtein) continue;
       }
 
       if (clientRestrictions.length > 0) {
-        const nameNorm = ing.name.toLowerCase().trim();
         let restricted = false;
-        let appliedSwap: { substituteIngredient: string } | null = null;
+        let appliedSwap: { substituteIngredient: string; substituteQty: string | null; substituteUnit: string | null } | null = null;
 
         for (const restriction of clientRestrictions) {
-          if (nameNorm.includes(restriction) || restriction.includes(nameNorm)) {
-            restricted = true;
-            if (ing.role === 'core') {
-              const swap = ing.swaps.find((s) => s.restriction.toLowerCase().trim() === restriction);
-              if (swap) appliedSwap = swap;
+          if (!ingredientMatchesRestriction(ing.name, restriction)) continue;
+          restricted = true;
+
+          if (ing.role === 'core' || ing.role === 'garnish') {
+            // Find best swap by priority descending, checking all restriction keys
+            const candidate = ing.swaps
+              .filter((s) => canonicalizeRestriction(s.restriction) === restriction)
+              .sort((a, b) => b.priority - a.priority)[0];
+            if (candidate && (!appliedSwap || candidate.priority > (appliedSwap as { priority?: number }).priority!)) {
+              appliedSwap = candidate;
             }
-            break;
           }
+          // No break — check all restrictions so we find the best swap across all matching ones
         }
 
         if (restricted) {
@@ -261,8 +267,8 @@ export async function generateGroceryItemsFromMenu(menuId: string): Promise<Gene
               id: nanoid(),
               menuId,
               name: appliedSwap.substituteIngredient,
-              quantity: ing.quantity,
-              unit: ing.unit,
+              quantity: appliedSwap.substituteQty ?? ing.quantity,
+              unit: appliedSwap.substituteUnit ?? ing.unit,
               checked: false,
               source: 'recipe',
               recipeItemId: ing.id,
@@ -273,7 +279,7 @@ export async function generateGroceryItemsFromMenu(menuId: string): Promise<Gene
               createdAt: new Date().toISOString(),
             });
           }
-          // Whether optional (skipped) or core+swap (already pushed), skip the original
+          // optional/garnish restricted with no swap → skip; core with no swap → skip defensively
           continue;
         }
       }

@@ -42,10 +42,13 @@ model RecipeIngredient {
 }
 
 model IngredientSwap {
-  id                   String @id
-  recipeIngredientId   String @map("recipe_ingredient_id")
-  substituteIngredient String @map("substitute_ingredient")
+  id                   String  @id
+  recipeIngredientId   String  @map("recipe_ingredient_id")
+  substituteIngredient String  @map("substitute_ingredient")
+  substituteQty        String? @map("substitute_qty")
+  substituteUnit       String? @map("substitute_unit")
   restriction          String
+  priority             Int     @default(0)
 
   ingredient RecipeIngredient @relation(fields: [recipeIngredientId], references: [id], onDelete: Cascade)
 
