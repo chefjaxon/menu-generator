@@ -108,6 +108,7 @@ async function scrapeRecipePage(url: string): Promise<{
 
   // --- Title ---
   const name =
+    $('[itemprop="name"]').first().text().trim() ||
     $('[class*="recipe-title"]').first().text().trim() ||
     $('[class*="recipeName"]').first().text().trim() ||
     $('[class*="recipe-name"]').first().text().trim() ||
@@ -117,6 +118,11 @@ async function scrapeRecipePage(url: string): Promise<{
   // --- Ingredients ---
   const rawIngredients: string[] = [];
   const ingredientSelectors = [
+    // Recipe Keeper Online: itemprop="ingredient" inside a ul
+    'li[itemprop="ingredient"]',
+    'li[itemprop="recipeIngredient"]',
+    // Generic fallbacks
+    '[class*="recipe-ingredient"]',
     '[class*="ingredient"] li',
     '[id*="ingredient"] li',
     'ul.ingredients li',
@@ -125,7 +131,8 @@ async function scrapeRecipePage(url: string): Promise<{
   for (const sel of ingredientSelectors) {
     $(sel).each((_, el) => {
       const text = $(el).text().trim();
-      if (text) rawIngredients.push(text);
+      // Skip blank lines and pure section headers (no numbers or units)
+      if (text && text.length > 1) rawIngredients.push(text);
     });
     if (rawIngredients.length > 0) break;
   }
@@ -133,6 +140,12 @@ async function scrapeRecipePage(url: string): Promise<{
   // --- Instructions ---
   const instructionParts: string[] = [];
   const instructionSelectors = [
+    // Recipe Keeper Online: itemprop="recipeInstructions" ul > li
+    '[itemprop="recipeInstructions"] li',
+    '[itemprop="recipeInstructions"] p',
+    // Generic fallbacks
+    '[class*="recipe-direction"] li',
+    '[class*="recipe-direction"] p',
     '[class*="instruction"] p',
     '[class*="instruction"] li',
     '[class*="direction"] p',
@@ -152,7 +165,13 @@ async function scrapeRecipePage(url: string): Promise<{
 
   // --- Serving size ---
   let servingSize: number | null = null;
-  const servingSelectors = ['[class*="serving"]', '[class*="yield"]', '[class*="portion"]'];
+  const servingSelectors = [
+    '[itemprop="recipeYield"]',
+    '[itemprop="yield"]',
+    '[class*="serving"]',
+    '[class*="yield"]',
+    '[class*="portion"]',
+  ];
   for (const sel of servingSelectors) {
     $(sel).each((_, el) => {
       const text = $(el).text();
