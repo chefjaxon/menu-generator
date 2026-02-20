@@ -91,6 +91,7 @@ model Client {
   menuComposition    ClientMenuComposition[]
   menus              Menu[]
   account            ClientAccount?
+  schedules          ChefSchedule[]
 
   @@map("clients")
 }
@@ -187,6 +188,7 @@ model Chef {
 
   sessions    ChefSession[]
   assignments ChefAssignment[]
+  schedules   ChefSchedule[]
 
   @@map("chefs")
 }
@@ -290,4 +292,19 @@ model GroceryItem {
   menu Menu @relation(fields: [menuId], references: [id], onDelete: Cascade)
 
   @@map("grocery_items")
+}
+
+model ChefSchedule {
+  id            String   @id @default(cuid())
+  chefId        String   @map("chef_id")
+  clientId      String   @map("client_id")
+  scheduledDate DateTime @map("scheduled_date")
+  scheduledTime String   @map("scheduled_time")
+  notes         String?
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  chef   Chef   @relation(fields: [chefId], references: [id], onDelete: Cascade)
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("chef_schedules")
 }

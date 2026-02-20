@@ -50,7 +50,7 @@ export function middleware(request: NextRequest) {
   }
 
   // Chef routes — accept either chef-session or admin menu-gen-session
-  if (pathname === '/chef' || pathname.startsWith('/chef/')) {
+  if (pathname === '/chef' || pathname.startsWith('/chef/') || pathname.startsWith('/api/chef/schedule')) {
     const chefToken = request.cookies.get('chef-session')?.value;
     const adminToken = request.cookies.get('menu-gen-session')?.value;
     if (!chefToken && !adminToken) {

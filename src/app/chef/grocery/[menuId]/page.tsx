@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, User } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
 import { ChefGroceryView } from './ChefGroceryView';
 
@@ -24,6 +24,7 @@ export default async function ChefGroceryPage({
       pantrySubmitted: true,
       client: {
         select: {
+          id: true,
           name: true,
           chefNotes: true,
           servingsPerDish: true,
@@ -71,13 +72,22 @@ export default async function ChefGroceryPage({
       {/* Chef header */}
       <div className="bg-foreground text-background px-4 py-4 sticky top-0 z-10">
         <div className="max-w-lg mx-auto">
-          <Link
-            href="/chef"
-            className="inline-flex items-center gap-1.5 text-xs opacity-70 hover:opacity-100 mb-1"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Back to Home
-          </Link>
+          <div className="flex items-center justify-between mb-1">
+            <Link
+              href="/chef"
+              className="inline-flex items-center gap-1.5 text-xs opacity-70 hover:opacity-100"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Back to Home
+            </Link>
+            <Link
+              href={`/chef/client/${menu.client.id}`}
+              className="inline-flex items-center gap-1.5 text-xs opacity-70 hover:opacity-100"
+            >
+              <User className="h-3.5 w-3.5" />
+              Client Profile
+            </Link>
+          </div>
           <h1 className="text-base font-semibold">{menu.client.name}</h1>
           <p className="text-xs opacity-70">
             {menu.weekLabel || new Date(menu.createdAt).toLocaleDateString('en-US', {
@@ -100,7 +110,7 @@ export default async function ChefGroceryPage({
 
         {/* Client selected dishes */}
         {menu.items.length > 0 && (
-          <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
+          <div id="recipes" className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
             <p className="text-xs font-semibold text-green-800 mb-2">Selected Dishes</p>
             <div className="space-y-1.5">
               {menu.items.map((item) => (

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Plus } from 'lucide-react';
+import { Plus, CalendarDays } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
@@ -12,7 +12,7 @@ export default async function ChefsPage() {
       name: true,
       email: true,
       createdAt: true,
-      _count: { select: { assignments: true } },
+      _count: { select: { assignments: true, schedules: true } },
     },
   });
 
@@ -40,6 +40,7 @@ export default async function ChefsPage() {
                 <th className="text-left px-4 py-3 font-medium">Email</th>
                 <th className="text-left px-4 py-3 font-medium">Menus assigned</th>
                 <th className="text-left px-4 py-3 font-medium">Created</th>
+                <th className="px-4 py-3"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -52,6 +53,15 @@ export default async function ChefsPage() {
                     {new Date(chef.createdAt).toLocaleDateString('en-US', {
                       month: 'short', day: 'numeric', year: 'numeric',
                     })}
+                  </td>
+                  <td className="px-4 py-3">
+                    <Link
+                      href="/schedule"
+                      className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 border border-border rounded-md hover:bg-muted transition-colors"
+                    >
+                      <CalendarDays className="h-3.5 w-3.5" />
+                      Schedule
+                    </Link>
                   </td>
                 </tr>
               ))}

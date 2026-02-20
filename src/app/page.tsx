@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ChefHat, Users, CalendarDays, Sparkles, Bell, CheckCircle2 } from 'lucide-react';
+import { ChefHat, Users, CalendarDays, Sparkles, Bell, CheckCircle2, Clock } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
@@ -111,6 +111,13 @@ export default async function DashboardPage() {
         >
           <Sparkles className="h-4 w-4" />
           Generate Menu
+        </Link>
+        <Link
+          href="/schedule"
+          className="flex items-center gap-2 px-4 py-2 border border-border rounded-md text-sm font-medium hover:bg-muted"
+        >
+          <Clock className="h-4 w-4" />
+          Schedule
         </Link>
         <Link
           href="/recipes/new"

@@ -12,6 +12,7 @@ const navItems = [
   { href: '/menus', label: 'Menu History', icon: CalendarDays },
   { href: '/grocery-lists', label: 'Grocery Lists', icon: ShoppingCart },
   { href: '/chefs', label: 'Chefs', icon: UtensilsCrossed },
+  { href: '/schedule', label: 'Schedule', icon: CalendarDays },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
