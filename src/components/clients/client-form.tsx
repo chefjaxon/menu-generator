@@ -434,9 +434,7 @@ export function ClientForm({ client }: { client?: Client }) {
     5: 'Favorite',
   };
 
-  const availableSuggestions = COMMON_EXCLUSIONS.filter(
-    (s) => !form.restrictions.includes(s)
-  );
+  const availableSuggestions = COMMON_EXCLUSIONS.filter((s) => !form.restrictions.includes(s));
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
@@ -679,7 +677,7 @@ export function ClientForm({ client }: { client?: Client }) {
       <div>
         <label className="block text-sm font-medium mb-2">Food Exclusions</label>
         <p className="text-xs text-muted-foreground mb-2">
-          Add any ingredients or food types this client cannot eat. Recipes containing these will be excluded.
+          Ingredients this client cannot eat. Recipes with restricted core ingredients (and no valid swap) will be excluded from their menus.
         </p>
 
         {form.restrictions.length > 0 && (
@@ -693,7 +691,7 @@ export function ClientForm({ client }: { client?: Client }) {
                 <button
                   type="button"
                   onClick={() => removeRestriction(r)}
-                  className="hover:text-red-900"
+                  className="hover:opacity-70 ml-0.5"
                 >
                   <X className="h-3 w-3" />
                 </button>
