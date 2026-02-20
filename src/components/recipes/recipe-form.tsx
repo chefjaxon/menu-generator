@@ -41,6 +41,42 @@ const RECIPE_TAG_SUGGESTIONS = [
   'white flour', 'white rice', 'fermented foods', 'coffee',
 ];
 
+// Keywords that map ingredient text to contains tags
+const TAG_KEYWORD_MAP: Record<string, string[]> = {
+  dairy: ['milk', 'cream', 'butter', 'cheese', 'yogurt', 'parmesan', 'mozzarella', 'cheddar', 'ricotta', 'brie', 'feta', 'gouda', 'half and half', 'half & half', 'sour cream', 'ghee', 'whey', 'lactose', 'dairy'],
+  gluten: ['flour', 'bread', 'pasta', 'spaghetti', 'noodle', 'wheat', 'barley', 'rye', 'soy sauce', 'panko', 'breadcrumb', 'crouton', 'tortilla', 'pita', 'couscous', 'semolina', 'gluten'],
+  nuts: ['almond', 'walnut', 'pecan', 'cashew', 'pistachio', 'hazelnut', 'macadamia', 'pine nut', 'peanut', 'nut butter', 'almond milk', 'tahini'],
+  soy: ['soy', 'tofu', 'edamame', 'miso', 'tempeh', 'soy sauce', 'tamari', 'soybean'],
+  eggs: ['egg', 'eggs', 'yolk', 'egg white'],
+  beef: ['beef', 'steak', 'ground beef', 'brisket', 'chuck', 'sirloin', 'ribeye', 'short rib', 'veal'],
+  pork: ['pork', 'bacon', 'ham', 'pancetta', 'prosciutto', 'sausage', 'chorizo', 'salami', 'pepperoni', 'lard', 'pork chop', 'pulled pork', 'ribs'],
+  shellfish: ['shrimp', 'crab', 'lobster', 'scallop', 'clam', 'mussel', 'oyster', 'prawn', 'crayfish', 'langoustine', 'shellfish'],
+  cilantro: ['cilantro'],
+  mushrooms: ['mushroom', 'portobello', 'shiitake', 'cremini', 'button mushroom', 'oyster mushroom'],
+  olives: ['olive', 'kalamata', 'tapenade'],
+  eggplant: ['eggplant', 'aubergine'],
+  spinach: ['spinach'],
+  beets: ['beet', 'beetroot'],
+  corn: ['corn', 'maize', 'hominy', 'grits', 'polenta', 'corn tortilla', 'cornmeal'],
+  cornstarch: ['cornstarch', 'corn starch', 'corn flour'],
+  'white sugar': ['white sugar', 'granulated sugar', 'cane sugar', 'sugar'],
+  honey: ['honey'],
+  'white flour': ['white flour', 'all-purpose flour', 'all purpose flour', 'ap flour'],
+  'white rice': ['white rice', 'jasmine rice', 'basmati rice'],
+  'fermented foods': ['miso', 'kimchi', 'sauerkraut', 'kefir', 'kombucha', 'tempeh', 'vinegar', 'sourdough'],
+  coffee: ['coffee', 'espresso', 'cold brew', 'instant coffee'],
+};
+
+function detectTagsFromIngredients(ingredients: IngredientField[]): string[] {
+  const ingredientText = ingredients
+    .map((i) => i.name.toLowerCase())
+    .join(' | ');
+
+  return Object.entries(TAG_KEYWORD_MAP)
+    .filter(([, keywords]) => keywords.some((kw) => ingredientText.includes(kw)))
+    .map(([tag]) => tag);
+}
+
 function emptyIngredient(): IngredientField {
   return { name: '', quantity: '', unit: '', role: 'core', swaps: [] };
 }
@@ -214,7 +250,23 @@ export function RecipeForm({ recipe }: { recipe?: Recipe }) {
         instructions: prev.instructions.trim() === '' && data.instructions ? data.instructions : prev.instructions,
         servingSize: prev.servingSize === 1 && data.servingSize ? data.servingSize : prev.servingSize,
         cuisineType: prev.cuisineType === 'american' && data.cuisineType ? data.cuisineType : prev.cuisineType,
-        tags: prev.tags.length === 0 && data.tags?.length > 0 ? data.tags : prev.tags,
+        tags: prev.tags.length === 0
+          ? (() => {
+              const newIngredients =
+                prev.ingredients.length === 1 &&
+                prev.ingredients[0].name.trim() === '' &&
+                data.ingredients?.length > 0
+                  ? data.ingredients.map((ing: { name: string; quantity: string; unit: string }) => ({
+                      name: ing.name,
+                      quantity: ing.quantity,
+                      unit: ing.unit,
+                      role: 'core' as IngredientRole,
+                      swaps: [],
+                    }))
+                  : prev.ingredients;
+              return detectTagsFromIngredients(newIngredients);
+            })()
+          : prev.tags,
         proteinSwaps: prev.proteinSwaps.length === 0 && data.proteins?.length > 0 ? data.proteins : prev.proteinSwaps,
         ingredients:
           prev.ingredients.length === 1 &&
