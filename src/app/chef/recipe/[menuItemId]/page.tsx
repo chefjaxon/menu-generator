@@ -65,6 +65,55 @@ export default async function ChefRecipePage({
 
   const hasSwaps = ingredientSwaps.size > 0;
 
+  // Build a name-keyed map for instruction highlighting: originalName -> substituteName
+  // Sort by length descending so longer names match before shorter substrings
+  const nameSwaps: Array<{ original: string; substitute: string }> = Array.from(
+    ingredientSwaps.entries()
+  )
+    .map(([ingId, sub]) => {
+      const ing = recipe.ingredients.find((i) => i.id === ingId)!;
+      return { original: ing.name, substitute: sub };
+    })
+    .sort((a, b) => b.original.length - a.original.length);
+
+  /**
+   * Splits `text` into segments, tagging any span that matches a swapped
+   * ingredient name so it can be rendered with a swap callout inline.
+   */
+  function highlightSwaps(
+    text: string
+  ): Array<{ text: string; swap?: { original: string; substitute: string } }> {
+    if (nameSwaps.length === 0) return [{ text }];
+
+    // Build a single regex that alternates all original names (escaped)
+    const pattern = nameSwaps
+      .map((s) => s.original.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+      .join('|');
+    const regex = new RegExp(`(${pattern})`, 'gi');
+
+    const parts: Array<{ text: string; swap?: { original: string; substitute: string } }> = [];
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = regex.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push({ text: text.slice(lastIndex, match.index) });
+      }
+      const matched = match[0];
+      const swapEntry = nameSwaps.find(
+        (s) => s.original.toLowerCase() === matched.toLowerCase()
+      )!;
+      parts.push({ text: matched, swap: swapEntry });
+      lastIndex = match.index + matched.length;
+    }
+
+    if (lastIndex < text.length) {
+      parts.push({ text: text.slice(lastIndex) });
+    }
+
+    return parts;
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -145,7 +194,23 @@ export default async function ChefRecipePage({
           <div>
             <h2 className="text-sm font-semibold mb-3">Instructions</h2>
             <div className="text-sm text-foreground whitespace-pre-line leading-relaxed">
-              {recipe.instructions}
+              {hasSwaps
+                ? highlightSwaps(recipe.instructions).map((part, i) =>
+                    part.swap ? (
+                      <span key={i} className="inline-block align-baseline">
+                        <span className="line-through text-muted-foreground/60">{part.text}</span>
+                        {' '}
+                        <span className="font-semibold text-amber-700">{part.swap.substitute}</span>
+                        <span className="ml-1 text-xs px-1 py-0.5 bg-amber-100 text-amber-700 rounded align-middle">
+                          swap
+                        </span>
+                        {' '}
+                      </span>
+                    ) : (
+                      <span key={i}>{part.text}</span>
+                    )
+                  )
+                : recipe.instructions}
             </div>
           </div>
         )}
