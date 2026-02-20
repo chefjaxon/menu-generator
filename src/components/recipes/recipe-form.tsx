@@ -213,6 +213,9 @@ export function RecipeForm({ recipe }: { recipe?: Recipe }) {
         description: prev.description.trim() === '' && data.description ? data.description : prev.description,
         instructions: prev.instructions.trim() === '' && data.instructions ? data.instructions : prev.instructions,
         servingSize: prev.servingSize === 1 && data.servingSize ? data.servingSize : prev.servingSize,
+        cuisineType: prev.cuisineType === 'american' && data.cuisineType ? data.cuisineType : prev.cuisineType,
+        tags: prev.tags.length === 0 && data.tags?.length > 0 ? data.tags : prev.tags,
+        proteinSwaps: prev.proteinSwaps.length === 0 && data.proteins?.length > 0 ? data.proteins : prev.proteinSwaps,
         ingredients:
           prev.ingredients.length === 1 &&
           prev.ingredients[0].name.trim() === '' &&

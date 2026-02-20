@@ -11,17 +11,27 @@ interface ScrapedIngredient {
   unit: string;
 }
 
-async function generateDescription(
+interface RecipeMetadata {
+  description: string;
+  cuisineType: string;
+  tags: string[];
+  proteins: string[];
+}
+
+const VALID_CUISINE_TYPES = ['mexican', 'italian', 'asian', 'mediterranean', 'american', 'indian', 'other'] as const;
+
+async function generateRecipeMetadata(
   name: string,
   ingredients: string[],
   instructions: string
-): Promise<string> {
+): Promise<RecipeMetadata> {
+  const empty: RecipeMetadata = { description: '', cuisineType: '', tags: [], proteins: [] };
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return '';
+  if (!apiKey) return empty;
 
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
+    const timeout = setTimeout(() => controller.abort(), 15000);
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -33,24 +43,46 @@ async function generateDescription(
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 150,
+        max_tokens: 400,
         messages: [
           {
             role: 'user',
-            content: `Given these ingredients and instructions from a recipe called "${name}", write a 1-2 sentence appetizing description of the dish. Be concise and focus on what makes it appealing.\n\nIngredients:\n${ingredients.slice(0, 20).join('\n')}\n\nInstructions:\n${instructions.slice(0, 500)}`,
+            content: `Analyze this recipe and return a JSON object with exactly these fields:
+- "description": A 1-2 sentence appetizing description of the dish.
+- "cuisineType": One of exactly: mexican, italian, asian, mediterranean, american, indian, other
+- "tags": An array of strings from this list that apply based on ingredients: dairy, gluten, nuts, soy, eggs, beef, pork, shellfish, cilantro, mushrooms, olives, eggplant, spinach, beets, corn, cornstarch, white sugar, honey, processed ingredients, white flour, white rice, fermented foods, coffee
+- "proteins": An array of protein types present (e.g. chicken, beef, pork, fish, shrimp, tofu, turkey, lamb, eggs). Only include proteins actually in the ingredients.
+
+Return ONLY valid JSON with no extra text.
+
+Recipe: "${name}"
+Ingredients:
+${ingredients.slice(0, 20).join('\n')}
+
+Instructions:
+${instructions.slice(0, 500)}`,
           },
         ],
       }),
     });
 
     clearTimeout(timeout);
-    if (!response.ok) return '';
+    if (!response.ok) return empty;
 
     const data = await response.json();
     const text: string = data?.content?.[0]?.text ?? '';
-    return text.trim();
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return empty;
+
+    const parsed = JSON.parse(jsonMatch[0]);
+    return {
+      description: typeof parsed.description === 'string' ? parsed.description.trim() : '',
+      cuisineType: VALID_CUISINE_TYPES.includes(parsed.cuisineType) ? parsed.cuisineType : '',
+      tags: Array.isArray(parsed.tags) ? parsed.tags.filter((t: unknown) => typeof t === 'string') : [],
+      proteins: Array.isArray(parsed.proteins) ? parsed.proteins.filter((p: unknown) => typeof p === 'string') : [],
+    };
   } catch {
-    return '';
+    return empty;
   }
 }
 
@@ -163,14 +195,17 @@ export async function POST(request: NextRequest) {
         };
       });
 
-    let description = '';
+    let metadata: RecipeMetadata = { description: '', cuisineType: '', tags: [], proteins: [] };
     if (name && ingredients.length > 0 && instructions) {
-      description = await generateDescription(name, rawIngredients, instructions);
+      metadata = await generateRecipeMetadata(name, rawIngredients, instructions);
     }
 
     return NextResponse.json({
       name,
-      description,
+      description: metadata.description,
+      cuisineType: metadata.cuisineType,
+      tags: metadata.tags,
+      proteins: metadata.proteins,
       instructions,
       servingSize,
       ingredients,
