@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
     cuisine: searchParams.get('cuisine') || undefined,
     itemType: searchParams.get('itemType') || undefined,
     protein: searchParams.get('protein') || undefined,
+    tag: searchParams.get('tag') || undefined,
     search: searchParams.get('search') || undefined,
   };
 

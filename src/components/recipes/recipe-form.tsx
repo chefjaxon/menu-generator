@@ -7,6 +7,38 @@ import { CUISINE_TYPES, ITEM_TYPES, COMMON_EXCLUSIONS } from '@/lib/types';
 import { formatLabel } from '@/lib/utils';
 import type { Recipe, IngredientRole } from '@/lib/types';
 
+const TAG_KEYWORD_MAP: Record<string, string[]> = {
+  dairy: ['milk', 'cream', 'cheese', 'butter', 'yogurt', 'whey', 'casein', 'lactose', 'ghee', 'sour cream', 'cream cheese', 'mozzarella', 'parmesan', 'cheddar', 'brie', 'ricotta', 'half-and-half', 'buttermilk'],
+  gluten: ['flour', 'wheat', 'bread', 'pasta', 'breadcrumb', 'soy sauce', 'barley', 'rye', 'semolina', 'couscous', 'panko', 'crouton', 'tortilla', 'pita'],
+  nuts: ['almond', 'walnut', 'pecan', 'cashew', 'pistachio', 'hazelnut', 'peanut', 'pine nut', 'macadamia', 'nut butter', 'tahini'],
+  soy: ['tofu', 'edamame', 'miso', 'tempeh', 'soybean', 'tamari'],
+  eggs: ['egg'],
+  shellfish: ['shrimp', 'crab', 'lobster', 'clam', 'mussel', 'scallop', 'oyster', 'prawn'],
+  beef: ['beef', 'steak', 'brisket', 'chuck', 'sirloin'],
+  pork: ['pork', 'bacon', 'ham', 'prosciutto', 'pancetta', 'lard'],
+  cilantro: ['cilantro'],
+  mushrooms: ['mushroom', 'shiitake', 'portobello', 'cremini'],
+  olives: ['olive'],
+  eggplant: ['eggplant', 'aubergine'],
+  spinach: ['spinach'],
+  corn: ['corn'],
+};
+
+function detectTagsFromIngredients(ingredientNames: string[]): string[] {
+  const detected = new Set<string>();
+  for (const [tag, keywords] of Object.entries(TAG_KEYWORD_MAP)) {
+    for (const keyword of keywords) {
+      const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`\\b${escaped}s?\\b`, 'i');
+      if (ingredientNames.some((name) => regex.test(name))) {
+        detected.add(tag);
+        break;
+      }
+    }
+  }
+  return Array.from(detected).sort();
+}
+
 interface SwapField {
   restriction: string;
   substituteIngredient: string;
@@ -33,6 +65,7 @@ interface FormData {
   recipeKeeperUrl: string;
   ingredients: IngredientField[];
   proteinSwaps: string[];
+  tags: string[];
 }
 
 function emptyIngredient(): IngredientField {
@@ -46,6 +79,7 @@ export function RecipeForm({ recipe }: { recipe?: Recipe }) {
   const [availableProteins, setAvailableProteins] = useState<string[]>([]);
   const [scraping, setScraping] = useState(false);
   const [scrapeError, setScrapeError] = useState('');
+  const [tagInput, setTagInput] = useState('');
 
   useEffect(() => {
     fetch('/api/proteins')
@@ -76,6 +110,7 @@ export function RecipeForm({ recipe }: { recipe?: Recipe }) {
       })) ?? [],
     })) ?? [emptyIngredient()],
     proteinSwaps: recipe?.proteinSwaps ?? [],
+    tags: recipe?.tags ?? [],
   });
 
   function updateField<K extends keyof FormData>(key: K, value: FormData[K]) {
@@ -156,6 +191,27 @@ export function RecipeForm({ recipe }: { recipe?: Recipe }) {
     }));
   }
 
+  function addTag(tag: string) {
+    const trimmed = tag.trim().toLowerCase();
+    if (!trimmed) return;
+    setForm((prev) => ({
+      ...prev,
+      tags: prev.tags.includes(trimmed) ? prev.tags : [...prev.tags, trimmed].sort(),
+    }));
+    setTagInput('');
+  }
+
+  function removeTag(tag: string) {
+    setForm((prev) => ({ ...prev, tags: prev.tags.filter((t) => t !== tag) }));
+  }
+
+  function handleTagKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      addTag(tagInput);
+    }
+  }
+
   async function handleRecipeKeeperBlur() {
     const url = form.recipeKeeperUrl.trim();
     if (!url) return;
@@ -183,27 +239,39 @@ export function RecipeForm({ recipe }: { recipe?: Recipe }) {
         return;
       }
 
-      setForm((prev) => ({
-        ...prev,
-        name: prev.name.trim() === '' && data.name ? data.name : prev.name,
-        description: prev.description.trim() === '' && data.description ? data.description : prev.description,
-        instructions: prev.instructions.trim() === '' && data.instructions ? data.instructions : prev.instructions,
-        servingSize: prev.servingSize === 1 && data.servingSize ? data.servingSize : prev.servingSize,
-        cuisineType: prev.cuisineType === 'american' && data.cuisineType ? data.cuisineType : prev.cuisineType,
-        proteinSwaps: prev.proteinSwaps.length === 0 && data.proteins?.length > 0 ? data.proteins : prev.proteinSwaps,
-        ingredients:
+      setForm((prev) => {
+        const willPopulateIngredients =
           prev.ingredients.length === 1 &&
           prev.ingredients[0].name.trim() === '' &&
-          data.ingredients?.length > 0
-            ? data.ingredients.map((ing: { name: string; quantity: string; unit: string }) => ({
-                name: ing.name,
-                quantity: ing.quantity,
-                unit: ing.unit,
-                role: 'core' as IngredientRole,
-                swaps: [],
-              }))
-            : prev.ingredients,
-      }));
+          data.ingredients?.length > 0;
+
+        const newIngredients = willPopulateIngredients
+          ? data.ingredients.map((ing: { name: string; quantity: string; unit: string }) => ({
+              name: ing.name,
+              quantity: ing.quantity,
+              unit: ing.unit,
+              role: 'core' as IngredientRole,
+              swaps: [],
+            }))
+          : prev.ingredients;
+
+        const autoTags =
+          prev.tags.length === 0 && willPopulateIngredients
+            ? detectTagsFromIngredients(newIngredients.map((i: { name: string }) => i.name))
+            : prev.tags;
+
+        return {
+          ...prev,
+          name: prev.name.trim() === '' && data.name ? data.name : prev.name,
+          description: prev.description.trim() === '' && data.description ? data.description : prev.description,
+          instructions: prev.instructions.trim() === '' && data.instructions ? data.instructions : prev.instructions,
+          servingSize: prev.servingSize === 1 && data.servingSize ? data.servingSize : prev.servingSize,
+          cuisineType: prev.cuisineType === 'american' && data.cuisineType ? data.cuisineType : prev.cuisineType,
+          proteinSwaps: prev.proteinSwaps.length === 0 && data.proteins?.length > 0 ? data.proteins : prev.proteinSwaps,
+          ingredients: newIngredients,
+          tags: autoTags,
+        };
+      });
     } catch {
       setScrapeError('Could not fetch recipe data. You can fill in the fields manually.');
     } finally {
@@ -387,6 +455,64 @@ export function RecipeForm({ recipe }: { recipe?: Recipe }) {
             </button>
           ))}
         </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium mb-1">Contains Tags</label>
+        <p className="text-xs text-muted-foreground mb-2">
+          Tag ingredients that match common dietary restrictions (e.g. dairy, gluten, nuts). Used to filter recipes for clients with those restrictions.
+        </p>
+        {/* Current tags as chips */}
+        {form.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {form.tags.map((tag) => (
+              <span
+                key={tag}
+                className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 rounded-full text-xs"
+              >
+                {tag}
+                <button
+                  type="button"
+                  onClick={() => removeTag(tag)}
+                  className="text-amber-600 hover:text-amber-900"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        {/* Tag input */}
+        <input
+          type="text"
+          value={tagInput}
+          onChange={(e) => setTagInput(e.target.value)}
+          onKeyDown={handleTagKeyDown}
+          onBlur={() => { if (tagInput.trim()) addTag(tagInput); }}
+          placeholder="Type a tag and press Enter (e.g. dairy)"
+          className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+        {/* Suggestions */}
+        {(() => {
+          const suggestions = COMMON_EXCLUSIONS.filter(
+            (s) => !form.tags.includes(s.toLowerCase())
+          );
+          return suggestions.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              <span className="text-xs text-muted-foreground self-center">Suggestions:</span>
+              {suggestions.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => addTag(s)}
+                  className="px-2 py-0.5 border border-dashed border-border rounded-full text-xs text-muted-foreground hover:border-amber-400 hover:text-amber-700 transition-colors"
+                >
+                  + {s}
+                </button>
+              ))}
+            </div>
+          ) : null;
+        })()}
       </div>
 
       <div>

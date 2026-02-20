@@ -21,9 +21,21 @@ model Recipe {
 
   ingredients   RecipeIngredient[]
   proteinSwaps  RecipeProteinSwap[]
+  tags          RecipeTag[]
   menuItems     MenuItem[]
 
   @@map("recipes")
+}
+
+model RecipeTag {
+  id       String @id
+  recipeId String @map("recipe_id")
+  tag      String
+
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@unique([recipeId, tag])
+  @@map("recipe_tags")
 }
 
 model RecipeIngredient {

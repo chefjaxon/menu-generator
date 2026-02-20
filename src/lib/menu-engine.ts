@@ -16,6 +16,29 @@ type EligibilityResult =
   | { eligible: true; omitNotes: string[] }
   | { eligible: false };
 
+// Layer 1: tag-based gate — blocks a recipe if it has a restriction tag that the client
+// is restricted from AND no ingredient swap exists for that restriction.
+// Recipes with no tags are assumed safe (pass through).
+function passesTagExclusionCheck(recipe: Recipe, clientRestrictions: string[]): boolean {
+  if (clientRestrictions.length === 0) return true;
+  if (recipe.tags.length === 0) return true;
+
+  for (const restriction of clientRestrictions) {
+    const canon = canonicalizeRestriction(restriction);
+    const tagMatches = recipe.tags.some(
+      (tag) => canonicalizeRestriction(tag) === canon
+    );
+    if (!tagMatches) continue; // recipe doesn't contain this restriction
+
+    // Recipe has this restriction tag — only allowed if an ingredient swap covers it
+    const hasSwap = recipe.ingredients.some((ing) =>
+      ing.swaps.some((s) => canonicalizeRestriction(s.restriction) === canon)
+    );
+    if (!hasSwap) return false; // hard block
+  }
+  return true;
+}
+
 function checkIngredientEligibility(
   recipe: Recipe,
   clientExclusions: string[]
@@ -65,6 +88,10 @@ async function getEligibleRecipes(client: Client): Promise<{ eligible: EligibleR
   const clientExclusions = client.restrictions.map((r) => canonicalizeRestriction(r));
 
   for (const recipe of allRecipes) {
+    // Layer 1: tag-based gate
+    if (!passesTagExclusionCheck(recipe, client.restrictions)) continue;
+
+    // Layer 2: ingredient-level check (generates omit/swap notes)
     const ingredientResult = checkIngredientEligibility(recipe, clientExclusions);
     if (!ingredientResult.eligible) continue;
 

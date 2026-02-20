@@ -24,6 +24,7 @@ function mapRecipe(row: {
     swaps: Array<{ id: string; substituteIngredient: string; substituteQty: string | null; substituteUnit: string | null; restriction: string; priority: number; recipeIngredientId: string }>;
   }>;
   proteinSwaps: Array<{ protein: string }>;
+  tags: Array<{ tag: string }>;
 }): Recipe {
   return {
     id: row.id,
@@ -53,6 +54,7 @@ function mapRecipe(row: {
       sortOrder: i.sortOrder,
     })),
     proteinSwaps: row.proteinSwaps.map((p) => p.protein),
+    tags: row.tags.map((t) => t.tag),
   };
 }
 
@@ -62,12 +64,14 @@ const recipeInclude = {
     include: { swaps: true },
   },
   proteinSwaps: true,
+  tags: { orderBy: { tag: 'asc' as const } },
 };
 
 export async function getAllRecipes(filters?: {
   cuisine?: string;
   itemType?: string;
   protein?: string;
+  tag?: string;
   search?: string;
 }): Promise<Recipe[]> {
   const rows = await prisma.recipe.findMany({
@@ -75,6 +79,7 @@ export async function getAllRecipes(filters?: {
       ...(filters?.cuisine ? { cuisineType: filters.cuisine } : {}),
       ...(filters?.itemType ? { itemType: filters.itemType } : {}),
       ...(filters?.protein ? { proteinSwaps: { some: { protein: filters.protein } } } : {}),
+      ...(filters?.tag ? { tags: { some: { tag: filters.tag } } } : {}),
       ...(filters?.search ? { name: { contains: filters.search, mode: 'insensitive' } } : {}),
     },
     include: recipeInclude,
@@ -108,6 +113,7 @@ export interface RecipeInput {
     swaps?: Array<{ substituteIngredient: string; restriction: string; priority?: number; substituteQty?: string | null; substituteUnit?: string | null }>;
   }>;
   proteinSwaps: string[];
+  tags: string[];
 }
 
 export interface SwapInput {
@@ -144,6 +150,9 @@ export async function createRecipe(data: RecipeInput): Promise<Recipe> {
       },
       proteinSwaps: {
         create: data.proteinSwaps.map((protein) => ({ id: nanoid(), protein })),
+      },
+      tags: {
+        create: data.tags.map((tag) => ({ id: nanoid(), tag })),
       },
     },
   });
@@ -197,6 +206,7 @@ export async function updateRecipe(id: string, data: RecipeInput): Promise<Recip
     }),
     prisma.recipeIngredient.deleteMany({ where: { recipeId: id } }),
     prisma.recipeProteinSwap.deleteMany({ where: { recipeId: id } }),
+    prisma.recipeTag.deleteMany({ where: { recipeId: id } }),
     prisma.recipeIngredient.createMany({
       data: data.ingredients.map((ing, i) => ({
         id: nanoid(),
@@ -210,6 +220,9 @@ export async function updateRecipe(id: string, data: RecipeInput): Promise<Recip
     }),
     prisma.recipeProteinSwap.createMany({
       data: data.proteinSwaps.map((protein) => ({ id: nanoid(), recipeId: id, protein })),
+    }),
+    prisma.recipeTag.createMany({
+      data: data.tags.map((tag) => ({ id: nanoid(), recipeId: id, tag })),
     }),
   ]);
 
