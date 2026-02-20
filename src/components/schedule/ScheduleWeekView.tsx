@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Pencil, X } from 'lucide-react';
+import { Plus, Pencil, X, Repeat2 } from 'lucide-react';
 import { ScheduleEntryForm } from './ScheduleEntryForm';
 import type { ChefScheduleEntry } from '@/lib/queries/schedule';
 
@@ -45,6 +45,16 @@ function formatTime(time: string): string {
   const period = h >= 12 ? 'PM' : 'AM';
   const hour = h % 12 || 12;
   return `${hour}:${String(m).padStart(2, '0')} ${period}`;
+}
+
+function MenuStatusBadge({ linkedMenu }: { linkedMenu: ChefScheduleEntry['linkedMenu'] }) {
+  if (!linkedMenu) {
+    return <p className="text-xs text-muted-foreground mt-0.5">Menu not yet available</p>;
+  }
+  if (linkedMenu.groceryApproved && linkedMenu.publishedAt) {
+    return <p className="text-xs text-emerald-600 mt-0.5">Menu ready</p>;
+  }
+  return <p className="text-xs text-amber-600 mt-0.5">Menu in progress</p>;
 }
 
 export function ScheduleWeekView({ entries, weekStart, chefs, clients }: Props) {
@@ -123,6 +133,7 @@ export function ScheduleWeekView({ entries, weekStart, chefs, clients }: Props) 
                           scheduledDate: entry.scheduledDate,
                           scheduledTime: entry.scheduledTime,
                           notes: entry.notes ?? undefined,
+                          recurrenceId: entry.recurrenceId,
                         }}
                         onSuccess={() => setEditingId(null)}
                         onCancel={() => setEditingId(null)}
@@ -130,18 +141,19 @@ export function ScheduleWeekView({ entries, weekStart, chefs, clients }: Props) 
                     ) : (
                       <div className="flex items-center justify-between px-4 py-3 border border-border rounded-xl bg-card">
                         <div>
-                          <p className="text-sm font-medium">
+                          <p className="text-sm font-medium flex items-center gap-1.5">
                             {formatTime(entry.scheduledTime)} · {entry.chefName}
+                            {entry.recurrenceId && (
+                              <span title="Recurring">
+                                <Repeat2 className="h-3 w-3 text-muted-foreground" />
+                              </span>
+                            )}
                           </p>
                           <p className="text-xs text-muted-foreground mt-0.5">{entry.clientName}</p>
                           {entry.notes && (
                             <p className="text-xs text-muted-foreground italic mt-0.5">{entry.notes}</p>
                           )}
-                          {entry.readyMenu ? (
-                            <p className="text-xs text-emerald-600 mt-0.5">Menu ready</p>
-                          ) : (
-                            <p className="text-xs text-muted-foreground mt-0.5">Menu pending</p>
-                          )}
+                          <MenuStatusBadge linkedMenu={entry.linkedMenu} />
                         </div>
                         <div className="flex gap-1">
                           <button

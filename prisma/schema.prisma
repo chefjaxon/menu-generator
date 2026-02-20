@@ -159,6 +159,7 @@ model Menu {
   items           MenuItem[]
   groceryItems    GroceryItem[]
   chefAssignments ChefAssignment[]
+  scheduleEntry   ChefSchedule?
 
   @@map("menus")
 }
@@ -301,10 +302,13 @@ model ChefSchedule {
   scheduledDate DateTime @map("scheduled_date")
   scheduledTime String   @map("scheduled_time")
   notes         String?
+  recurrenceId  String?  @map("recurrence_id")
+  menuId        String?  @unique @map("menu_id")
   createdAt     DateTime @default(now()) @map("created_at")
 
   chef   Chef   @relation(fields: [chefId], references: [id], onDelete: Cascade)
   client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  menu   Menu?  @relation(fields: [menuId], references: [id], onDelete: SetNull)
 
   @@map("chef_schedules")
 }

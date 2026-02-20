@@ -32,8 +32,8 @@ export default async function ChefDashboardPage() {
   // Chef session: show only their assigned menus. Admin session: show all assignments.
   const whereClause = chef ? { chefId: chef.chefId } : {};
 
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
+  const todayStr = new Date().toISOString().split('T')[0];
+  const today = new Date(todayStr + 'T00:00:00Z');
   const twoWeeks = new Date(today);
   twoWeeks.setUTCDate(today.getUTCDate() + 14);
 
@@ -61,16 +61,13 @@ export default async function ChefDashboardPage() {
             scheduledDate: { gte: today, lte: twoWeeks },
           },
           include: {
-            client: {
+            client: { select: { id: true, name: true } },
+            menu: {
               select: {
                 id: true,
-                name: true,
-                menus: {
-                  where: { groceryApproved: true, publishedAt: { not: null } },
-                  orderBy: { createdAt: 'desc' },
-                  take: 1,
-                  select: { id: true, weekLabel: true },
-                },
+                weekLabel: true,
+                groceryApproved: true,
+                publishedAt: true,
               },
             },
           },
@@ -104,17 +101,18 @@ export default async function ChefDashboardPage() {
             ) : (
               <div className="space-y-3">
                 {schedules.map((s) => {
-                  const readyMenu = s.client.menus[0] ?? null;
+                  const linkedMenu = s.menu;
+                  const menuReady = linkedMenu && linkedMenu.groceryApproved && linkedMenu.publishedAt;
                   return (
                     <div key={s.id} className="border border-border rounded-xl p-4">
                       <p className="text-xs text-muted-foreground mb-1">
                         {formatDate(s.scheduledDate)} · {formatTime(s.scheduledTime)}
                       </p>
                       <p className="font-medium text-sm">{s.client.name}</p>
-                      {readyMenu ? (
+                      {menuReady ? (
                         <div className="mt-2 flex flex-wrap gap-2">
                           <Link
-                            href={`/chef/grocery/${readyMenu.id}`}
+                            href={`/chef/grocery/${linkedMenu.id}`}
                             className="text-xs px-2.5 py-1 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
                           >
                             Grocery List
@@ -126,12 +124,14 @@ export default async function ChefDashboardPage() {
                             Client Profile
                           </Link>
                           <Link
-                            href={`/chef/grocery/${readyMenu.id}#recipes`}
+                            href={`/chef/grocery/${linkedMenu.id}#recipes`}
                             className="text-xs px-2.5 py-1 border border-border rounded-md hover:bg-muted transition-colors"
                           >
                             Recipes
                           </Link>
                         </div>
+                      ) : linkedMenu ? (
+                        <p className="text-xs text-amber-600 mt-1">Menu in progress</p>
                       ) : (
                         <p className="text-xs text-muted-foreground mt-1">Menu not yet available</p>
                       )}

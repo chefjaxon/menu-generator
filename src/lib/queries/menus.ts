@@ -170,13 +170,30 @@ export async function finalizeMenu(menuId: string, weekLabel?: string): Promise<
     month: 'short', day: 'numeric', year: 'numeric',
   });
 
+  let clientId: string;
   try {
-    await prisma.menu.update({
+    const updated = await prisma.menu.update({
       where: { id: menuId, finalized: false },
       data: { finalized: true, weekLabel: label },
+      select: { clientId: true },
     });
+    clientId = updated.clientId;
   } catch {
     return null;
+  }
+
+  // Auto-link to the nearest upcoming unlinked schedule entry for this client
+  const todayStr = new Date().toISOString().split('T')[0];
+  const today = new Date(todayStr + 'T00:00:00Z');
+  const nearest = await prisma.chefSchedule.findFirst({
+    where: { clientId, menuId: null, scheduledDate: { gte: today } },
+    orderBy: { scheduledDate: 'asc' },
+  });
+  if (nearest) {
+    await prisma.chefSchedule.update({
+      where: { id: nearest.id },
+      data: { menuId },
+    });
   }
 
   return getMenuById(menuId);

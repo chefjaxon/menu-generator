@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Repeat2 } from 'lucide-react';
 
 interface Chef {
   id: string;
@@ -22,6 +23,7 @@ interface Props {
     scheduledDate?: string;
     scheduledTime?: string;
     notes?: string;
+    recurrenceId?: string | null;
   };
   editId?: string;
   onSuccess: () => void;
@@ -38,6 +40,10 @@ export function ScheduleEntryForm({ chefs, clients, defaultValues, editId, onSuc
   const [scheduledDate, setScheduledDate] = useState(defaultValues?.scheduledDate ?? '');
   const [scheduledTime, setScheduledTime] = useState(defaultValues?.scheduledTime ?? '');
   const [notes, setNotes] = useState(defaultValues?.notes ?? '');
+  const [recurrence, setRecurrence] = useState<'none' | 'weekly' | 'biweekly'>('none');
+
+  const isEdit = !!editId;
+  const isRecurring = !!defaultValues?.recurrenceId;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -45,13 +51,24 @@ export function ScheduleEntryForm({ chefs, clients, defaultValues, editId, onSuc
     setError(null);
 
     try {
-      const url = editId ? `/api/schedule/${editId}` : '/api/schedule';
-      const method = editId ? 'PATCH' : 'POST';
+      const url = isEdit ? `/api/schedule/${editId}` : '/api/schedule';
+      const method = isEdit ? 'PATCH' : 'POST';
+
+      const body: Record<string, unknown> = {
+        chefId,
+        clientId,
+        scheduledDate,
+        scheduledTime,
+        notes: notes || null,
+      };
+      if (!isEdit) {
+        body.recurrence = recurrence;
+      }
 
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chefId, clientId, scheduledDate, scheduledTime, notes: notes || null }),
+        body: JSON.stringify(body),
       });
 
       if (!res.ok) {
@@ -71,6 +88,12 @@ export function ScheduleEntryForm({ chefs, clients, defaultValues, editId, onSuc
 
   return (
     <form onSubmit={handleSubmit} className="border border-border rounded-xl p-4 bg-muted/20 space-y-3">
+      {isEdit && isRecurring && (
+        <p className="text-xs text-muted-foreground flex items-center gap-1.5 italic">
+          <Repeat2 className="h-3.5 w-3.5 shrink-0" />
+          Part of a recurring series — editing this occurrence only
+        </p>
+      )}
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
           <label className="text-xs font-medium text-muted-foreground">Chef</label>
@@ -124,6 +147,20 @@ export function ScheduleEntryForm({ chefs, clients, defaultValues, editId, onSuc
           />
         </div>
       </div>
+      {!isEdit && (
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-muted-foreground">Repeat</label>
+          <select
+            value={recurrence}
+            onChange={(e) => setRecurrence(e.target.value as 'none' | 'weekly' | 'biweekly')}
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          >
+            <option value="none">Does not repeat</option>
+            <option value="weekly">Weekly (8 weeks)</option>
+            <option value="biweekly">Every 2 weeks (8 occurrences)</option>
+          </select>
+        </div>
+      )}
       <div className="space-y-1">
         <label className="text-xs font-medium text-muted-foreground">Notes (optional)</label>
         <textarea
@@ -150,7 +187,13 @@ export function ScheduleEntryForm({ chefs, clients, defaultValues, editId, onSuc
           disabled={saving}
           className="px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50"
         >
-          {saving ? 'Saving…' : editId ? 'Save changes' : 'Add appointment'}
+          {saving
+            ? 'Saving…'
+            : isEdit
+            ? 'Save changes'
+            : recurrence !== 'none'
+            ? 'Add recurring appointments'
+            : 'Add appointment'}
         </button>
       </div>
     </form>

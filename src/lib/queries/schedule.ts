@@ -1,4 +1,12 @@
+import { nanoid } from 'nanoid';
 import { prisma } from '../prisma';
+
+export interface LinkedMenu {
+  id: string;
+  weekLabel: string | null;
+  groceryApproved: boolean;
+  publishedAt: string | null;
+}
 
 export interface ChefScheduleEntry {
   id: string;
@@ -7,10 +15,11 @@ export interface ChefScheduleEntry {
   clientId: string;
   clientName: string;
   clientChefNotes: string | null;
-  scheduledDate: string; // ISO date string "2026-02-21"
+  scheduledDate: string; // "2026-02-21"
   scheduledTime: string; // "09:00"
   notes: string | null;
-  readyMenu: { id: string; weekLabel: string | null } | null;
+  recurrenceId: string | null;
+  linkedMenu: LinkedMenu | null;
 }
 
 function mapEntry(row: {
@@ -20,12 +29,15 @@ function mapEntry(row: {
   scheduledDate: Date;
   scheduledTime: string;
   notes: string | null;
+  recurrenceId: string | null;
   chef: { name: string };
-  client: {
-    name: string;
-    chefNotes: string | null;
-    menus: { id: string; weekLabel: string | null }[];
-  };
+  client: { name: string; chefNotes: string | null };
+  menu: {
+    id: string;
+    weekLabel: string | null;
+    groceryApproved: boolean;
+    publishedAt: Date | null;
+  } | null;
 }): ChefScheduleEntry {
   return {
     id: row.id,
@@ -37,40 +49,40 @@ function mapEntry(row: {
     scheduledDate: row.scheduledDate.toISOString().split('T')[0],
     scheduledTime: row.scheduledTime,
     notes: row.notes,
-    readyMenu: row.client.menus[0] ?? null,
+    recurrenceId: row.recurrenceId,
+    linkedMenu: row.menu
+      ? {
+          id: row.menu.id,
+          weekLabel: row.menu.weekLabel,
+          groceryApproved: row.menu.groceryApproved,
+          publishedAt: row.menu.publishedAt ? row.menu.publishedAt.toISOString() : null,
+        }
+      : null,
   };
 }
 
-const readyMenuInclude = {
-  menus: {
-    where: {
-      groceryApproved: true,
-      publishedAt: { not: null },
-    },
-    orderBy: { createdAt: 'desc' as const },
-    take: 1,
-    select: { id: true, weekLabel: true },
+const menuInclude = {
+  select: {
+    id: true,
+    weekLabel: true,
+    groceryApproved: true,
+    publishedAt: true,
   },
-};
+} as const;
+
+const baseInclude = {
+  chef: { select: { name: true } },
+  client: { select: { name: true, chefNotes: true } },
+  menu: menuInclude,
+} as const;
 
 export async function getScheduleForWeek(weekStart: Date): Promise<ChefScheduleEntry[]> {
   const weekEnd = new Date(weekStart);
-  weekEnd.setDate(weekStart.getDate() + 7);
+  weekEnd.setUTCDate(weekStart.getUTCDate() + 7);
 
   const rows = await prisma.chefSchedule.findMany({
-    where: {
-      scheduledDate: { gte: weekStart, lt: weekEnd },
-    },
-    include: {
-      chef: { select: { name: true } },
-      client: {
-        select: {
-          name: true,
-          chefNotes: true,
-          ...readyMenuInclude,
-        },
-      },
-    },
+    where: { scheduledDate: { gte: weekStart, lt: weekEnd } },
+    include: baseInclude,
     orderBy: [{ scheduledDate: 'asc' }, { scheduledTime: 'asc' }],
   });
 
@@ -83,20 +95,8 @@ export async function getScheduleForChef(
   to: Date
 ): Promise<ChefScheduleEntry[]> {
   const rows = await prisma.chefSchedule.findMany({
-    where: {
-      chefId,
-      scheduledDate: { gte: from, lte: to },
-    },
-    include: {
-      chef: { select: { name: true } },
-      client: {
-        select: {
-          name: true,
-          chefNotes: true,
-          ...readyMenuInclude,
-        },
-      },
-    },
+    where: { chefId, scheduledDate: { gte: from, lte: to } },
+    include: baseInclude,
     orderBy: [{ scheduledDate: 'asc' }, { scheduledTime: 'asc' }],
   });
 
@@ -106,9 +106,10 @@ export async function getScheduleForChef(
 export async function createScheduleEntry(data: {
   chefId: string;
   clientId: string;
-  scheduledDate: string; // "YYYY-MM-DD"
-  scheduledTime: string; // "HH:MM"
+  scheduledDate: string;
+  scheduledTime: string;
   notes?: string;
+  recurrenceId?: string;
 }): Promise<ChefScheduleEntry> {
   const row = await prisma.chefSchedule.create({
     data: {
@@ -117,20 +118,43 @@ export async function createScheduleEntry(data: {
       scheduledDate: new Date(data.scheduledDate + 'T00:00:00Z'),
       scheduledTime: data.scheduledTime,
       notes: data.notes ?? null,
+      recurrenceId: data.recurrenceId ?? null,
     },
-    include: {
-      chef: { select: { name: true } },
-      client: {
-        select: {
-          name: true,
-          chefNotes: true,
-          ...readyMenuInclude,
-        },
-      },
-    },
+    include: baseInclude,
   });
 
   return mapEntry(row);
+}
+
+export async function createRecurringEntries(
+  data: {
+    chefId: string;
+    clientId: string;
+    scheduledDate: string;
+    scheduledTime: string;
+    notes?: string;
+  },
+  recurrence: 'weekly' | 'biweekly'
+): Promise<void> {
+  const recurrenceId = nanoid();
+  const intervalDays = recurrence === 'weekly' ? 7 : 14;
+  const count = 8;
+
+  const baseDate = new Date(data.scheduledDate + 'T00:00:00Z');
+  const rows = Array.from({ length: count }, (_, i) => {
+    const d = new Date(baseDate);
+    d.setUTCDate(baseDate.getUTCDate() + i * intervalDays);
+    return {
+      chefId: data.chefId,
+      clientId: data.clientId,
+      scheduledDate: d,
+      scheduledTime: data.scheduledTime,
+      notes: data.notes ?? null,
+      recurrenceId,
+    };
+  });
+
+  await prisma.chefSchedule.createMany({ data: rows });
 }
 
 export async function updateScheduleEntry(
@@ -154,16 +178,7 @@ export async function updateScheduleEntry(
       ...(data.scheduledTime !== undefined && { scheduledTime: data.scheduledTime }),
       ...(data.notes !== undefined && { notes: data.notes }),
     },
-    include: {
-      chef: { select: { name: true } },
-      client: {
-        select: {
-          name: true,
-          chefNotes: true,
-          ...readyMenuInclude,
-        },
-      },
-    },
+    include: baseInclude,
   });
 
   return mapEntry(row);

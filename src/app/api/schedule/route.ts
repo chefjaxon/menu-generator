@@ -3,6 +3,7 @@ import { validateSession } from '@/lib/auth';
 import {
   getScheduleForWeek,
   createScheduleEntry,
+  createRecurringEntries,
 } from '@/lib/queries/schedule';
 
 export async function GET(request: NextRequest) {
@@ -18,7 +19,6 @@ export async function GET(request: NextRequest) {
   if (weekParam) {
     weekStart = new Date(weekParam + 'T00:00:00Z');
   } else {
-    // Default to current week's Monday
     weekStart = new Date();
     weekStart.setUTCHours(0, 0, 0, 0);
     const day = weekStart.getUTCDay();
@@ -37,10 +37,18 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { chefId, clientId, scheduledDate, scheduledTime, notes } = body;
+  const { chefId, clientId, scheduledDate, scheduledTime, notes, recurrence } = body;
 
   if (!chefId || !clientId || !scheduledDate || !scheduledTime) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+  }
+
+  if (recurrence === 'weekly' || recurrence === 'biweekly') {
+    await createRecurringEntries(
+      { chefId, clientId, scheduledDate, scheduledTime, notes },
+      recurrence
+    );
+    return NextResponse.json({ ok: true }, { status: 201 });
   }
 
   const entry = await createScheduleEntry({ chefId, clientId, scheduledDate, scheduledTime, notes });
