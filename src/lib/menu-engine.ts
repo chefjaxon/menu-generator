@@ -11,19 +11,6 @@ interface ScoredRecipe {
   omitNotes: string[];
 }
 
-function passesTagExclusionCheck(recipe: Recipe, clientExclusions: string[]): boolean {
-  if (clientExclusions.length === 0) return true;
-
-  const recipeTags = recipe.tags.map((t) => t.toLowerCase().trim());
-  for (const exclusion of clientExclusions) {
-    const normalizedExclusion = exclusion.toLowerCase().trim();
-    if (recipeTags.includes(normalizedExclusion)) {
-      return false;
-    }
-  }
-  return true;
-}
-
 type EligibilityResult =
   | { eligible: true; omitNotes: string[] }
   | { eligible: false };
@@ -69,10 +56,7 @@ async function getEligibleRecipes(client: Client): Promise<{ eligible: EligibleR
   const eligible: EligibleRecipe[] = [];
 
   for (const recipe of allRecipes) {
-    // Layer 1: fast tag-based pre-filter (excludes recipes tagged as the restricted category)
-    if (!passesTagExclusionCheck(recipe, client.restrictions)) continue;
-
-    // Layer 2: ingredient-level role check (rescues recipes where only optional/garnish ingredients conflict)
+    // Ingredient-level role check — matches client restrictions directly against ingredient names
     const ingredientResult = checkIngredientEligibility(recipe, client.restrictions);
     if (!ingredientResult.eligible) continue;
 

@@ -27,7 +27,6 @@ export const recipeCreateSchema = z.object({
   recipeKeeperUrl: z.string().url().optional().or(z.literal('')),
   ingredients: z.array(ingredientSchema).min(1, 'At least one ingredient is required'),
   proteinSwaps: z.array(proteinString),
-  tags: z.array(z.string().min(1).max(100)),
 });
 
 export type RecipeCreateInput = z.infer<typeof recipeCreateSchema>;

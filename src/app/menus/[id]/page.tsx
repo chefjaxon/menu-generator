@@ -229,14 +229,6 @@ function MenuItemCard({ item }: { item: import('@/lib/types').MenuItem }) {
                 {formatLabel(item.selectedProtein)}
               </span>
             )}
-            {recipe.tags.map((tag) => (
-              <span
-                key={tag}
-                className="px-2 py-0.5 bg-orange-50 text-orange-700 rounded text-xs"
-              >
-                {tag}
-              </span>
-            ))}
           </div>
           {item.omitNotes && item.omitNotes.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1">

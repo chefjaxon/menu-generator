@@ -14,7 +14,6 @@ interface ScrapedIngredient {
 interface RecipeMetadata {
   description: string;
   cuisineType: string;
-  tags: string[];
   proteins: string[];
 }
 
@@ -25,7 +24,7 @@ async function generateRecipeMetadata(
   ingredients: string[],
   instructions: string
 ): Promise<RecipeMetadata> {
-  const empty: RecipeMetadata = { description: '', cuisineType: '', tags: [], proteins: [] };
+  const empty: RecipeMetadata = { description: '', cuisineType: '', proteins: [] };
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return empty;
 
@@ -43,14 +42,13 @@ async function generateRecipeMetadata(
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 400,
+        max_tokens: 300,
         messages: [
           {
             role: 'user',
             content: `Analyze this recipe and return a JSON object with exactly these fields:
 - "description": A 1-2 sentence appetizing description of the dish.
 - "cuisineType": One of exactly: mexican, italian, asian, mediterranean, american, indian, other
-- "tags": An array of strings from this list that apply based on ingredients: dairy, gluten, nuts, soy, eggs, beef, pork, shellfish, cilantro, mushrooms, olives, eggplant, spinach, beets, corn, cornstarch, white sugar, honey, processed ingredients, white flour, white rice, fermented foods, coffee
 - "proteins": An array of protein types present (e.g. chicken, beef, pork, fish, shrimp, tofu, turkey, lamb, eggs). Only include proteins actually in the ingredients.
 
 Return ONLY valid JSON with no extra text.
@@ -78,7 +76,6 @@ ${instructions.slice(0, 500)}`,
     return {
       description: typeof parsed.description === 'string' ? parsed.description.trim() : '',
       cuisineType: VALID_CUISINE_TYPES.includes(parsed.cuisineType) ? parsed.cuisineType : '',
-      tags: Array.isArray(parsed.tags) ? parsed.tags.filter((t: unknown) => typeof t === 'string') : [],
       proteins: Array.isArray(parsed.proteins) ? parsed.proteins.filter((p: unknown) => typeof p === 'string') : [],
     };
   } catch {
@@ -214,7 +211,7 @@ export async function POST(request: NextRequest) {
         };
       });
 
-    let metadata: RecipeMetadata = { description: '', cuisineType: '', tags: [], proteins: [] };
+    let metadata: RecipeMetadata = { description: '', cuisineType: '', proteins: [] };
     if (name && ingredients.length > 0 && instructions) {
       metadata = await generateRecipeMetadata(name, rawIngredients, instructions);
     }
@@ -223,7 +220,6 @@ export async function POST(request: NextRequest) {
       name,
       description: metadata.description,
       cuisineType: metadata.cuisineType,
-      tags: metadata.tags,
       proteins: metadata.proteins,
       instructions,
       servingSize,

@@ -266,9 +266,6 @@ export function MenuGenerator({ clients }: Props) {
                       {item.selectedProtein && (
                         <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs">{formatLabel(item.selectedProtein)}</span>
                       )}
-                      {item.recipe?.tags.map((t) => (
-                        <span key={t} className="px-2 py-0.5 bg-green-50 text-green-700 rounded text-xs">{formatLabel(t)}</span>
-                      ))}
                     </div>
                     {item.recipe?.description && (
                       <p className="text-xs text-muted-foreground">{item.recipe.description}</p>

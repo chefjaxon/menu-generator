@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Trash2, X } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { CUISINE_TYPES, ITEM_TYPES, COMMON_EXCLUSIONS } from '@/lib/types';
 import { formatLabel } from '@/lib/utils';
 import type { Recipe, IngredientRole } from '@/lib/types';
@@ -30,58 +30,6 @@ interface FormData {
   recipeKeeperUrl: string;
   ingredients: IngredientField[];
   proteinSwaps: string[];
-  tags: string[];
-}
-
-// Common "contains" tag suggestions for recipes
-const RECIPE_TAG_SUGGESTIONS = [
-  'dairy', 'gluten', 'nuts', 'soy', 'eggs', 'beef', 'pork', 'shellfish',
-  'cilantro', 'mushrooms', 'olives', 'eggplant', 'spinach', 'beets',
-  'corn', 'cornstarch', 'white sugar', 'honey', 'processed ingredients',
-  'white flour', 'white rice', 'fermented foods', 'coffee',
-];
-
-// Keywords that map ingredient text to contains tags
-// Use exact/whole-word strings — matching is done with word-boundary regex
-const TAG_KEYWORD_MAP: Record<string, string[]> = {
-  dairy: ['milk', 'cream', 'butter', 'cheese', 'yogurt', 'parmesan', 'mozzarella', 'cheddar', 'ricotta', 'brie', 'feta', 'gouda', 'half and half', 'half & half', 'sour cream', 'ghee', 'whey', 'lactose', 'dairy'],
-  gluten: ['flour', 'bread', 'pasta', 'spaghetti', 'noodle', 'wheat', 'barley', 'rye', 'panko', 'breadcrumb', 'crouton', 'pita', 'couscous', 'semolina', 'gluten'],
-  nuts: ['almond', 'walnut', 'pecan', 'cashew', 'pistachio', 'hazelnut', 'macadamia', 'pine nut', 'peanut', 'nut butter', 'almond milk', 'tahini'],
-  soy: ['tofu', 'edamame', 'miso', 'tempeh', 'soy sauce', 'tamari', 'soybean', 'soy milk'],
-  eggs: ['egg', 'eggs', 'egg yolk', 'egg white'],
-  beef: ['beef', 'steak', 'ground beef', 'brisket', 'chuck', 'sirloin', 'ribeye', 'short rib', 'veal'],
-  pork: ['pork', 'bacon', 'ham', 'pancetta', 'prosciutto', 'sausage', 'chorizo', 'salami', 'pepperoni', 'lard', 'pulled pork'],
-  shellfish: ['shrimp', 'crab', 'lobster', 'scallop', 'clam', 'mussel', 'oyster', 'prawn', 'crayfish', 'langoustine'],
-  cilantro: ['cilantro'],
-  mushrooms: ['mushroom', 'portobello', 'shiitake', 'cremini'],
-  olives: ['kalamata', 'black olive', 'green olive', 'sliced olive', 'whole olive', 'olive tapenade'],
-  eggplant: ['eggplant', 'aubergine'],
-  spinach: ['spinach'],
-  beets: ['beet', 'beetroot'],
-  corn: ['corn', 'hominy', 'grits', 'polenta', 'cornmeal', 'corn tortilla', 'maize'],
-  cornstarch: ['cornstarch', 'corn starch'],
-  'white sugar': ['white sugar', 'granulated sugar', 'cane sugar'],
-  honey: ['honey'],
-  'white flour': ['white flour', 'all-purpose flour', 'all purpose flour'],
-  'white rice': ['white rice', 'jasmine rice', 'basmati rice'],
-  'fermented foods': ['kimchi', 'sauerkraut', 'kefir', 'kombucha', 'sourdough'],
-  coffee: ['coffee', 'espresso', 'cold brew', 'instant coffee'],
-};
-
-function detectTagsFromIngredients(ingredients: IngredientField[]): string[] {
-  const ingredientNames = ingredients.map((i) => i.name.toLowerCase());
-
-  return Object.entries(TAG_KEYWORD_MAP)
-    .filter(([, keywords]) =>
-      ingredientNames.some((name) =>
-        keywords.some((kw) => {
-          // Match whole word/phrase — not as a substring of another word
-          const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          return new RegExp(`(?<![a-z])${escaped}(?![a-z])`, 'i').test(name);
-        })
-      )
-    )
-    .map(([tag]) => tag);
 }
 
 function emptyIngredient(): IngredientField {
@@ -92,7 +40,6 @@ export function RecipeForm({ recipe }: { recipe?: Recipe }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [tagInput, setTagInput] = useState('');
   const [availableProteins, setAvailableProteins] = useState<string[]>([]);
   const [scraping, setScraping] = useState(false);
   const [scrapeError, setScrapeError] = useState('');
@@ -123,7 +70,6 @@ export function RecipeForm({ recipe }: { recipe?: Recipe }) {
       })) ?? [],
     })) ?? [emptyIngredient()],
     proteinSwaps: recipe?.proteinSwaps ?? [],
-    tags: recipe?.tags ?? [],
   });
 
   function updateField<K extends keyof FormData>(key: K, value: FormData[K]) {
@@ -204,25 +150,6 @@ export function RecipeForm({ recipe }: { recipe?: Recipe }) {
     }));
   }
 
-  function addTag(value: string) {
-    const trimmed = value.trim().toLowerCase();
-    if (!trimmed) return;
-    if (form.tags.includes(trimmed)) return;
-    updateField('tags', [...form.tags, trimmed]);
-    setTagInput('');
-  }
-
-  function removeTag(value: string) {
-    updateField('tags', form.tags.filter((t) => t !== value));
-  }
-
-  function handleTagKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      addTag(tagInput);
-    }
-  }
-
   async function handleRecipeKeeperBlur() {
     const url = form.recipeKeeperUrl.trim();
     if (!url) return;
@@ -257,23 +184,6 @@ export function RecipeForm({ recipe }: { recipe?: Recipe }) {
         instructions: prev.instructions.trim() === '' && data.instructions ? data.instructions : prev.instructions,
         servingSize: prev.servingSize === 1 && data.servingSize ? data.servingSize : prev.servingSize,
         cuisineType: prev.cuisineType === 'american' && data.cuisineType ? data.cuisineType : prev.cuisineType,
-        tags: prev.tags.length === 0
-          ? (() => {
-              const newIngredients =
-                prev.ingredients.length === 1 &&
-                prev.ingredients[0].name.trim() === '' &&
-                data.ingredients?.length > 0
-                  ? data.ingredients.map((ing: { name: string; quantity: string; unit: string }) => ({
-                      name: ing.name,
-                      quantity: ing.quantity,
-                      unit: ing.unit,
-                      role: 'core' as IngredientRole,
-                      swaps: [],
-                    }))
-                  : prev.ingredients;
-              return detectTagsFromIngredients(newIngredients);
-            })()
-          : prev.tags,
         proteinSwaps: prev.proteinSwaps.length === 0 && data.proteins?.length > 0 ? data.proteins : prev.proteinSwaps,
         ingredients:
           prev.ingredients.length === 1 &&
@@ -338,10 +248,6 @@ export function RecipeForm({ recipe }: { recipe?: Recipe }) {
       setSaving(false);
     }
   }
-
-  const availableTagSuggestions = RECIPE_TAG_SUGGESTIONS.filter(
-    (s) => !form.tags.includes(s)
-  );
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
@@ -467,71 +373,6 @@ export function RecipeForm({ recipe }: { recipe?: Recipe }) {
             </button>
           ))}
         </div>
-      </div>
-
-      {/* Contains tags (free-text) */}
-      <div>
-        <label className="block text-sm font-medium mb-2">Contains</label>
-        <p className="text-xs text-muted-foreground mb-2">
-          Tag what this recipe contains. Clients who exclude these items will not receive this recipe.
-        </p>
-
-        {form.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mb-3">
-            {form.tags.map((t) => (
-              <span
-                key={t}
-                className="inline-flex items-center gap-1 px-2.5 py-1 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-xs"
-              >
-                {t}
-                <button
-                  type="button"
-                  onClick={() => removeTag(t)}
-                  className="hover:text-orange-900"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
-
-        <div className="flex gap-2 mb-2">
-          <input
-            type="text"
-            value={tagInput}
-            onChange={(e) => setTagInput(e.target.value)}
-            onKeyDown={handleTagKeyDown}
-            className="flex-1 px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            placeholder="Type a tag and press Enter (e.g. dairy, gluten, beef)"
-          />
-          <button
-            type="button"
-            onClick={() => addTag(tagInput)}
-            disabled={!tagInput.trim()}
-            className="px-3 py-2 border border-border rounded-md text-sm hover:bg-muted disabled:opacity-30"
-          >
-            Add
-          </button>
-        </div>
-
-        {availableTagSuggestions.length > 0 && (
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">Suggestions:</p>
-            <div className="flex flex-wrap gap-1">
-              {availableTagSuggestions.slice(0, 16).map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => addTag(s)}
-                  className="px-2 py-0.5 border border-dashed border-border rounded text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                >
-                  + {s}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       <div>

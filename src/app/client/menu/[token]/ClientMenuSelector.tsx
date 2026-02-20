@@ -252,11 +252,6 @@ function RecipeCard({
                 {formatLabel(item.selectedProtein)}
               </span>
             )}
-            {recipe.tags.map((tag) => (
-              <span key={tag} className="text-xs px-1.5 py-0.5 bg-orange-50 text-orange-700 rounded">
-                {tag}
-              </span>
-            ))}
           </div>
           {item.applicableSwaps && item.applicableSwaps.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mt-2">

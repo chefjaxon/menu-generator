@@ -9,7 +9,6 @@ export async function GET(request: NextRequest) {
   const filters = {
     cuisine: searchParams.get('cuisine') || undefined,
     itemType: searchParams.get('itemType') || undefined,
-    tag: searchParams.get('tag') || undefined,
     protein: searchParams.get('protein') || undefined,
     search: searchParams.get('search') || undefined,
   };

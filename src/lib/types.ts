@@ -45,7 +45,6 @@ export interface Recipe {
   updatedAt: string;
   ingredients: Ingredient[];
   proteinSwaps: string[];
-  tags: string[];
 }
 
 export interface CuisinePreference {

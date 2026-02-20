@@ -80,7 +80,6 @@ export function RecipeTable({ recipes: initialRecipes }: { recipes: Recipe[] }) 
                 <th className="text-left px-4 py-3 font-medium">Cuisine</th>
                 <th className="text-left px-4 py-3 font-medium">Type</th>
                 <th className="text-left px-4 py-3 font-medium">Proteins</th>
-                <th className="text-left px-4 py-3 font-medium">Tags</th>
                 <th className="text-right px-4 py-3 font-medium">Actions</th>
               </tr>
             </thead>
@@ -106,17 +105,6 @@ export function RecipeTable({ recipes: initialRecipes }: { recipes: Recipe[] }) 
                       ) : (
                         recipe.proteinSwaps.map((p) => (
                           <span key={p} className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs">{formatLabel(p)}</span>
-                        ))
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-1">
-                      {recipe.tags.length === 0 ? (
-                        <span className="text-xs text-muted-foreground">None</span>
-                      ) : (
-                        recipe.tags.map((t) => (
-                          <span key={t} className="px-2 py-0.5 bg-green-50 text-green-700 rounded text-xs">{formatLabel(t)}</span>
                         ))
                       )}
                     </div>

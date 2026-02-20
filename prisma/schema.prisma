@@ -21,7 +21,6 @@ model Recipe {
 
   ingredients   RecipeIngredient[]
   proteinSwaps  RecipeProteinSwap[]
-  tags          RecipeTag[]
   menuItems     MenuItem[]
 
   @@map("recipes")
@@ -62,16 +61,6 @@ model RecipeProteinSwap {
 
   @@unique([recipeId, protein])
   @@map("recipe_protein_swaps")
-}
-
-model RecipeTag {
-  id       String @id
-  recipeId String @map("recipe_id")
-  tag      String
-
-  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
-
-  @@map("recipe_tags")
 }
 
 model Client {
