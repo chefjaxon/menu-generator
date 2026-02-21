@@ -1,6 +1,7 @@
 import { prisma } from './prisma';
 import { getClientById } from './queries/clients';
 import { getAllRecipes } from './queries/recipes';
+import { getAllProteins } from './queries/proteins';
 import { getRecentRecipeIdsForClient, createDraftMenu } from './queries/menus';
 import { canonicalizeRestriction, ingredientMatchesRestriction } from './restriction-utils';
 import type { Recipe, GenerateResult, SwapSuggestion, Client } from './types';
@@ -19,14 +20,24 @@ type EligibilityResult =
 // Layer 1: tag-based gate — blocks a recipe if it has a restriction tag that the client
 // is restricted from AND no ingredient swap exists for that restriction.
 // Recipes with no tags are assumed safe (pass through).
-function passesTagExclusionCheck(recipe: Recipe, clientRestrictions: string[]): boolean {
+// Protein tags (e.g. "pork", "chicken") are skipped — they represent OR options, not
+// dietary requirements, and are already handled by the protein-matching step.
+function passesTagExclusionCheck(
+  recipe: Recipe,
+  clientRestrictions: string[],
+  knownProteins: string[]
+): boolean {
   if (clientRestrictions.length === 0) return true;
   if (recipe.tags.length === 0) return true;
+
+  const proteinSet = new Set(knownProteins.map((p) => p.toLowerCase().trim()));
 
   for (const restriction of clientRestrictions) {
     const canon = canonicalizeRestriction(restriction);
     const tagMatches = recipe.tags.some(
-      (tag) => canonicalizeRestriction(tag) === canon
+      (tag) =>
+        !proteinSet.has(tag.toLowerCase().trim()) && // skip protein tags
+        canonicalizeRestriction(tag) === canon
     );
     if (!tagMatches) continue; // recipe doesn't contain this restriction
 
@@ -81,15 +92,15 @@ interface EligibleRecipe {
 }
 
 async function getEligibleRecipes(client: Client): Promise<{ eligible: EligibleRecipe[]; warnings: string[] }> {
-  const allRecipes = await getAllRecipes();
+  const [allRecipes, allProteins] = await Promise.all([getAllRecipes(), getAllProteins()]);
   const warnings: string[] = [];
   const eligible: EligibleRecipe[] = [];
 
   const clientExclusions = client.restrictions.map((r) => canonicalizeRestriction(r));
 
   for (const recipe of allRecipes) {
-    // Layer 1: tag-based gate
-    if (!passesTagExclusionCheck(recipe, client.restrictions)) continue;
+    // Layer 1: tag-based gate (protein tags are excluded from this check)
+    if (!passesTagExclusionCheck(recipe, client.restrictions, allProteins)) continue;
 
     // Layer 2: ingredient-level check (generates omit/swap notes)
     const ingredientResult = checkIngredientEligibility(recipe, clientExclusions);
