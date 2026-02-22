@@ -53,6 +53,8 @@ export interface GroceryMenuItem {
 export interface BuildGroceryOptions {
   /** Skip the Claude gray-zone normalization step entirely. Always true in tests. */
   skipClaudeNormalization?: boolean;
+  /** Fixed ISO timestamp for createdAt fields. Inject in tests for full determinism. Defaults to Date.now(). */
+  now?: string;
   /** When true, populate trace in the returned result. */
   debug?: boolean;
 }
@@ -87,7 +89,7 @@ export function buildGroceryFromData(
   const rawItems: GroceryItem[] = [];
   let sortIdx = 0;
   const fakeMenuId = 'test-menu';
-  const now = new Date().toISOString();
+  const now = options.now ?? new Date().toISOString();
 
   for (const menuItem of menuItems) {
     // Determine non-selected proteins for this menu item
