@@ -316,3 +316,14 @@ model ChefSchedule {
 
   @@map("chef_schedules")
 }
+
+model IngredientNormCache {
+  id          String   @id @default(cuid())
+  keyA        String   // alphabetically first member of the pair
+  keyB        String   // alphabetically second member of the pair
+  shouldMerge Boolean  @map("should_merge")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([keyA, keyB])
+  @@map("ingredient_norm_cache")
+}
