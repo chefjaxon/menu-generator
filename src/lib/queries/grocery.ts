@@ -1,12 +1,10 @@
 import { nanoid } from 'nanoid';
 import { prisma } from '../prisma';
 import {
-  consolidateExactDuplicates,
-  normalizeIngredientNames,
   applyClaudeGrayZoneNormalization,
+  buildGroceryFromData,
 } from '../grocery-utils';
-import { classifyIngredient } from '../ingredient-categories';
-import { canonicalizeRestriction, ingredientMatchesRestriction } from '../restriction-utils';
+import { canonicalizeRestriction } from '../restriction-utils';
 import type { GroceryItem, RemovedItem, GenerateGroceryResponse } from '../types';
 
 function mapGroceryItem(row: {
@@ -175,13 +173,10 @@ export async function restoreRemovedItem(itemId: string): Promise<GroceryItem | 
  * Manual items are never touched.
  *
  * Pipeline:
- * 1. Collect raw ingredients from selected recipes
- * 2. Normalize names via static alias table
- * 3. Apply Claude gray-zone normalization (optional, never blocks on failure)
- * 4. Separate items with no quantity AND no unit into the "removed" set
- * 5. Consolidate exact-name duplicates among kept items
- * 6. Atomically replace recipe/removed items in the DB, persist both sets
- * 7. Return { items, removedItems }
+ * 1. Collect raw ingredients from selected recipes (via pure buildGroceryFromData)
+ * 2. Apply Claude gray-zone normalization (async, never blocks on failure)
+ * 3. Atomically replace recipe/removed items in the DB, persist both sets
+ * 4. Return { items, removedItems }
  */
 export async function generateGroceryItemsFromMenu(menuId: string): Promise<GenerateGroceryResponse> {
   // Fetch menu to get clientId, then fetch client restrictions
@@ -196,7 +191,7 @@ export async function generateGroceryItemsFromMenu(menuId: string): Promise<Gene
     .map((r) => canonicalizeRestriction(r.restriction))
     .filter(Boolean);
 
-  const menuItems = await prisma.menuItem.findMany({
+  const menuItemRows = await prisma.menuItem.findMany({
     where: { menuId, clientSelected: true },
     include: {
       recipe: {
@@ -211,127 +206,14 @@ export async function generateGroceryItemsFromMenu(menuId: string): Promise<Gene
     },
   });
 
-  // Build raw ingredient list from all selected recipes.
-  // For restricted ingredients:
-  //   - optional: skip entirely
-  //   - core with a swap: push the substitute ingredient instead
-  //   - core without a swap: shouldn't reach here (recipe was filtered out), but skip defensively
-  const rawItems: GroceryItem[] = [];
-  let sortIdx = 0;
-  for (const menuItem of menuItems) {
-    // Determine non-selected proteins for this menu item so we can skip their ingredients.
-    // If a selectedProtein is set, any protein in the recipe's proteinSwaps that is NOT
-    // the selected one should not contribute ingredients to the grocery list.
-    const nonSelectedProteins: string[] = [];
-    if (menuItem.selectedProtein && menuItem.recipe.proteinSwaps.length > 1) {
-      for (const ps of menuItem.recipe.proteinSwaps) {
-        if (ps.protein.toLowerCase().trim() !== menuItem.selectedProtein.toLowerCase().trim()) {
-          nonSelectedProteins.push(ps.protein.toLowerCase().trim());
-        }
-      }
-    }
+  // Run the pure build (no IO)
+  const buildResult = buildGroceryFromData(menuItemRows, clientRestrictions);
 
-    for (const ing of menuItem.recipe.ingredients) {
-      // Skip ingredient if its name matches a non-selected protein (word-boundary match)
-      if (nonSelectedProteins.length > 0) {
-        const isNonSelectedProtein = nonSelectedProteins.some(
-          (p) => ingredientMatchesRestriction(ing.name, p)
-        );
-        if (isNonSelectedProtein) continue;
-      }
-
-      if (clientRestrictions.length > 0) {
-        let restricted = false;
-        let appliedSwap: { substituteIngredient: string; substituteQty: string | null; substituteUnit: string | null } | null = null;
-
-        for (const restriction of clientRestrictions) {
-          if (!ingredientMatchesRestriction(ing.name, restriction)) continue;
-          restricted = true;
-
-          if (ing.role === 'core' || ing.role === 'garnish') {
-            // Find best swap by priority descending, checking all restriction keys
-            const candidate = ing.swaps
-              .filter((s) => canonicalizeRestriction(s.restriction) === restriction)
-              .sort((a, b) => b.priority - a.priority)[0];
-            if (candidate && (!appliedSwap || candidate.priority > (appliedSwap as { priority?: number }).priority!)) {
-              appliedSwap = candidate;
-            }
-          }
-          // No break — check all restrictions so we find the best swap across all matching ones
-        }
-
-        if (restricted) {
-          if (appliedSwap) {
-            // Push the substitute ingredient in place of the original
-            rawItems.push({
-              id: nanoid(),
-              menuId,
-              name: appliedSwap.substituteIngredient,
-              quantity: appliedSwap.substituteQty ?? ing.quantity,
-              unit: appliedSwap.substituteUnit ?? ing.unit,
-              checked: false,
-              source: 'recipe',
-              recipeItemId: ing.id,
-              notes: `Swap for ${ing.name}`,
-              clientNote: null,
-              sortOrder: sortIdx++,
-              category: 'other',
-              createdAt: new Date().toISOString(),
-            });
-          }
-          // optional/garnish restricted with no swap → skip; core with no swap → skip defensively
-          continue;
-        }
-      }
-      rawItems.push({
-        id: nanoid(),
-        menuId,
-        name: ing.name,
-        quantity: ing.quantity,
-        unit: ing.unit,
-        checked: false,
-        source: 'recipe',
-        recipeItemId: ing.id,
-        notes: null,
-        clientNote: null,
-        sortOrder: sortIdx++,
-        category: 'other',
-        createdAt: new Date().toISOString(),
-      });
-    }
-  }
-
-  // Step 1: Static alias normalization (synchronous, never fails)
-  const aliasNormalized = normalizeIngredientNames(rawItems);
-
-  // Step 2: Claude gray-zone normalization (async, silently no-ops on failure)
-  const fullyNormalized = await applyClaudeGrayZoneNormalization(aliasNormalized);
-
-  // Step 3: Separate items with no quantity AND no unit
-  const toKeep: GroceryItem[] = [];
-  const toRemoveRaw: GroceryItem[] = [];
-  for (const item of fullyNormalized) {
-    if (item.quantity === null && item.unit === null) {
-      toRemoveRaw.push(item);
-    } else {
-      toKeep.push(item);
-    }
-  }
-
-  // Step 4: Consolidate exact duplicates among kept items
-  const consolidated = consolidateExactDuplicates(toKeep);
-
-  // Step 5: Deduplicate removed items by canonical name
-  // (same no-measurement ingredient from multiple recipes → one removed entry)
-  const removedByName = new Map<string, GroceryItem>();
-  for (const item of toRemoveRaw) {
-    const key = item.name.toLowerCase().trim();
-    if (!removedByName.has(key)) removedByName.set(key, item);
-  }
-  const deduplicatedRemoved = Array.from(removedByName.values());
+  // Apply Claude gray-zone normalization to kept items (async, silently no-ops on failure)
+  const fullyNormalized = await applyClaudeGrayZoneNormalization(buildResult.toKeep);
 
   // Build DB rows
-  const toCreateItems = consolidated.map((item, i) => ({
+  const toCreateItems = fullyNormalized.map((item, i) => ({
     id: nanoid(),
     menuId,
     name: item.name,
@@ -342,10 +224,10 @@ export async function generateGroceryItemsFromMenu(menuId: string): Promise<Gene
     recipeItemId: item.recipeItemId,
     notes: item.notes,
     sortOrder: i,
-    category: classifyIngredient(item.name),
+    category: item.category,
   }));
 
-  const toCreateRemoved = deduplicatedRemoved.map((item, i) => ({
+  const toCreateRemoved = buildResult.toRemove.map((item, i) => ({
     id: nanoid(),
     menuId,
     name: item.name,
@@ -356,10 +238,10 @@ export async function generateGroceryItemsFromMenu(menuId: string): Promise<Gene
     recipeItemId: item.recipeItemId,
     notes: null,
     sortOrder: i,
-    category: classifyIngredient(item.name),
+    category: item.category,
   }));
 
-  // Step 6: Atomic replace — delete stale recipe/removed rows, persist new split
+  // Atomic replace — delete stale recipe/removed rows, persist new split
   // Manual items (source='manual') are never deleted.
   await prisma.$transaction([
     prisma.groceryItem.deleteMany({
@@ -373,7 +255,7 @@ export async function generateGroceryItemsFromMenu(menuId: string): Promise<Gene
     }),
   ]);
 
-  // Step 7: Fetch and return both sets
+  // Fetch and return both sets
   const [items, removedItems] = await Promise.all([
     getGroceryItemsForMenu(menuId),
     getRemovedItemsForMenu(menuId),

@@ -1,0 +1,1006 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Grocery engine — golden snapshots (15 scenarios) > scenario: 01_no_restrictions_5_meals 1`] = `
+[
+  {
+    "name": "chicken breast",
+    "notes": null,
+    "quantity": "1",
+    "unit": "lb",
+  },
+  {
+    "name": "olive oil",
+    "notes": null,
+    "quantity": "2",
+    "unit": "tbsp",
+  },
+  {
+    "name": "onion",
+    "notes": null,
+    "quantity": "2",
+    "unit": null,
+  },
+  {
+    "name": "ground beef",
+    "notes": null,
+    "quantity": "1",
+    "unit": "lb",
+  },
+  {
+    "name": "garlic",
+    "notes": null,
+    "quantity": "3",
+    "unit": "cloves",
+  },
+  {
+    "name": "pork tenderloin",
+    "notes": null,
+    "quantity": "1",
+    "unit": "lb",
+  },
+  {
+    "name": "ground turkey",
+    "notes": null,
+    "quantity": "1",
+    "unit": "lb",
+  },
+  {
+    "name": "chicken broth",
+    "notes": null,
+    "quantity": "1",
+    "unit": "cup",
+  },
+  {
+    "name": "salmon fillet",
+    "notes": null,
+    "quantity": "6",
+    "unit": "oz",
+  },
+  {
+    "name": "tomato",
+    "notes": null,
+    "quantity": "2",
+    "unit": null,
+  },
+]
+`;
+
+exports[`Grocery engine — golden snapshots (15 scenarios) > scenario: 01_no_restrictions_5_meals 2`] = `
+[
+  {
+    "name": "salt",
+  },
+  {
+    "name": "pepper",
+  },
+]
+`;
+
+exports[`Grocery engine — golden snapshots (15 scenarios) > scenario: 02_dairy_free_5_meals 1`] = `
+[
+  {
+    "name": "chicken breast",
+    "notes": null,
+    "quantity": "1",
+    "unit": "lb",
+  },
+  {
+    "name": "butter",
+    "notes": null,
+    "quantity": "2",
+    "unit": "tbsp",
+  },
+  {
+    "name": "olive oil",
+    "notes": null,
+    "quantity": "2",
+    "unit": "tbsp",
+  },
+  {
+    "name": "ground beef",
+    "notes": null,
+    "quantity": "1",
+    "unit": "lb",
+  },
+  {
+    "name": "milk",
+    "notes": null,
+    "quantity": "1",
+    "unit": "cup",
+  },
+  {
+    "name": "garlic",
+    "notes": null,
+    "quantity": "3",
+    "unit": "cloves",
+  },
+  {
+    "name": "pork tenderloin",
+    "notes": null,
+    "quantity": "1",
+    "unit": "lb",
+  },
+  {
+    "name": "heavy cream",
+    "notes": null,
+    "quantity": "1/2",
+    "unit": "cup",
+  },
+  {
+    "name": "onion",
+    "notes": null,
+    "quantity": "1",
+    "unit": null,
+  },
+  {
+    "name": "ground turkey",
+    "notes": null,
+    "quantity": "1",
+    "unit": "lb",
+  },
+  {
+    "name": "parmesan",
+    "notes": null,
+    "quantity": "1/4",
+    "unit": "cup",
+  },
+  {
+    "name": "salmon fillet",
+    "notes": null,
+    "quantity": "6",
+    "unit": "oz",
+  },
+  {
+    "name": "cheddar",
+    "notes": null,
+    "quantity": "1/2",
+    "unit": "cup",
+  },
+]
+`;
+
+exports[`Grocery engine — golden snapshots (15 scenarios) > scenario: 02_dairy_free_5_meals 2`] = `
+[
+  {
+    "name": "salt",
+  },
+  {
+    "name": "pepper",
+  },
+]
+`;
+
+exports[`Grocery engine — golden snapshots (15 scenarios) > scenario: 03_gluten_free_5_meals 1`] = `
+[
+  {
+    "name": "chicken breast",
+    "notes": null,
+    "quantity": "1",
+    "unit": "lb",
+  },
+  {
+    "name": "all-purpose flour",
+    "notes": null,
+    "quantity": "1",
+    "unit": "cup",
+  },
+  {
+    "name": "garlic",
+    "notes": null,
+    "quantity": "3",
+    "unit": "cloves",
+  },
+  {
+    "name": "ground beef",
+    "notes": null,
+    "quantity": "1",
+    "unit": "lb",
+  },
+  {
+    "name": "bread crumbs",
+    "notes": null,
+    "quantity": "1/2",
+    "unit": "cup",
+  },
+  {
+    "name": "onion",
+    "notes": null,
+    "quantity": "1",
+    "unit": null,
+  },
+  {
+    "name": "pork tenderloin",
+    "notes": null,
+    "quantity": "1",
+    "unit": "lb",
+  },
+  {
+    "name": "soy sauce",
+    "notes": null,
+    "quantity": "2",
+    "unit": "tbsp",
+  },
+  {
+    "name": "ground turkey",
+    "notes": null,
+    "quantity": "1",
+    "unit": "lb",
+  },
+  {
+    "name": "pasta",
+    "notes": null,
+    "quantity": "8",
+    "unit": "oz",
+  },
+  {
+    "name": "salmon fillet",
+    "notes": null,
+    "quantity": "6",
+    "unit": "oz",
+  },
+  {
+    "name": "wheat tortillas",
+    "notes": null,
+    "quantity": "4",
+    "unit": null,
+  },
+  {
+    "name": "chicken broth",
+    "notes": null,
+    "quantity": "1",
+    "unit": "cup",
+  },
+]
+`;
+
+exports[`Grocery engine — golden snapshots (15 scenarios) > scenario: 03_gluten_free_5_meals 2`] = `
+[
+  {
+    "name": "salt",
+  },
+  {
+    "name": "pepper",
+  },
+]
+`;
+
+exports[`Grocery engine — golden snapshots (15 scenarios) > scenario: 04_nut_free_optional_omit 1`] = `
+[
+  {
+    "name": "chicken breast",
+    "notes": null,
+    "quantity": "1",
+    "unit": "lb",
+  },
+  {
+    "name": "almond butter",
+    "notes": null,
+    "quantity": "2",
+    "unit": "tbsp",
+  },
+  {
+    "name": "olive oil",
+    "notes": null,
+    "quantity": "2",
+    "unit": "tbsp",
+  },
+  {
+    "name": "ground beef",
+    "notes": null,
+    "quantity": "1",
+    "unit": "lb",
+  },
+  {
+    "name": "walnuts",
+    "notes": null,
+    "quantity": "1/4",
+    "unit": "cup",
+  },
+  {
+    "name": "garlic",
+    "notes": null,
+    "quantity": "3",
+    "unit": "cloves",
+  },
+  {
+    "name": "pork tenderloin",
+    "notes": null,
+    "quantity": "1",
+    "unit": "lb",
+  },
+  {
+    "name": "cashews",
+    "notes": null,
+    "quantity": "1/4",
+    "unit": "cup",
+  },
+  {
+    "name": "onion",
+    "notes": null,
+    "quantity": "1",
+    "unit": null,
+  },
+  {
+    "name": "ground turkey",
+    "notes": null,
+    "quantity": "1",
+    "unit": "lb",
+  },
+  {
+    "name": "peanut butter",
+    "notes": null,
+    "quantity": "3",
+    "unit": "tbsp",
+  },
+  {
+    "name": "salmon fillet",
+    "notes": null,
+    "quantity": "6",
+    "unit": "oz",
+  },
+]
+`;
+
+exports[`Grocery engine — golden snapshots (15 scenarios) > scenario: 04_nut_free_optional_omit 2`] = `
+[
+  {
+    "name": "salt",
+  },
+  {
+    "name": "pepper",
+  },
+]
+`;
+
+exports[`Grocery engine — golden snapshots (15 scenarios) > scenario: 05_egg_free_with_swaps 1`] = `
+[
+  {
+    "name": "chicken breast",
+    "notes": null,
+    "quantity": "1",
+    "unit": "lb",
+  },
+  {
+    "name": "flax egg",
+    "notes": "Swap for eggs; Swap for eggs; Swap for eggs",
+    "quantity": "3",
+    "unit": "tbsp",
+  },
+  {
+    "name": "olive oil",
+    "notes": null,
+    "quantity": "2",
+    "unit": "tbsp",
+  },
+  {
+    "name": "ground beef",
+    "notes": null,
+    "quantity": "1",
+    "unit": "lb",
+  },
+  {
+    "name": "egg whites",
+    "notes": null,
+    "quantity": "6",
+    "unit": null,
+  },
+  {
+    "name": "garlic",
+    "notes": null,
+    "quantity": "3",
+    "unit": "cloves",
+  },
+  {
+    "name": "pork tenderloin",
+    "notes": null,
+    "quantity": "1",
+    "unit": "lb",
+  },
+  {
+    "name": "onion",
+    "notes": null,
+    "quantity": "1",
+    "unit": null,
+  },
+  {
+    "name": "ground turkey",
+    "notes": null,
+    "quantity": "1",
+    "unit": "lb",
+  },
+  {
+    "name": "salmon fillet",
+    "notes": null,
+    "quantity": "6",
+    "unit": "oz",
+  },
+]
+`;
+
+exports[`Grocery engine — golden snapshots (15 scenarios) > scenario: 05_egg_free_with_swaps 2`] = `
+[
+  {
+    "name": "salt",
+  },
+  {
+    "name": "pepper",
+  },
+]
+`;
+
+exports[`Grocery engine — golden snapshots (15 scenarios) > scenario: 06_mixed_units_consolidation 1`] = `
+[
+  {
+    "name": "chicken breast",
+    "notes": null,
+    "quantity": "1",
+    "unit": "lb",
+  },
+  {
+    "name": "olive oil",
+    "notes": null,
+    "quantity": "2",
+    "unit": "tbsp",
+  },
+  {
+    "name": "garlic",
+    "notes": null,
+    "quantity": "5",
+    "unit": "cloves",
+  },
+  {
+    "name": "ground beef",
+    "notes": null,
+    "quantity": "1",
+    "unit": "lb",
+  },
+  {
+    "name": "lemon juice",
+    "notes": null,
+    "quantity": "1",
+    "unit": "tbsp",
+  },
+  {
+    "name": "onion",
+    "notes": null,
+    "quantity": "1",
+    "unit": null,
+  },
+  {
+    "name": "pork tenderloin",
+    "notes": null,
+    "quantity": "1",
+    "unit": "lb",
+  },
+  {
+    "name": "chicken broth",
+    "notes": null,
+    "quantity": "2",
+    "unit": "cup",
+  },
+  {
+    "name": "ground turkey",
+    "notes": null,
+    "quantity": "1",
+    "unit": "lb",
+  },
+  {
+    "name": "butter",
+    "notes": null,
+    "quantity": "2",
+    "unit": "tbsp",
+  },
+  {
+    "name": "salmon fillet",
+    "notes": null,
+    "quantity": "6",
+    "unit": "oz",
+  },
+]
+`;
+
+exports[`Grocery engine — golden snapshots (15 scenarios) > scenario: 06_mixed_units_consolidation 2`] = `
+[
+  {
+    "name": "salt",
+  },
+  {
+    "name": "pepper",
+  },
+]
+`;
+
+exports[`Grocery engine — golden snapshots (15 scenarios) > scenario: 07_synonym_normalization 1`] = `
+[
+  {
+    "name": "chicken breast",
+    "notes": null,
+    "quantity": "1",
+    "unit": "lb",
+  },
+  {
+    "name": "green onion",
+    "notes": null,
+    "quantity": "4",
+    "unit": null,
+  },
+  {
+    "name": "olive oil",
+    "notes": null,
+    "quantity": "2",
+    "unit": "tbsp",
+  },
+  {
+    "name": "ground beef",
+    "notes": null,
+    "quantity": "1",
+    "unit": "lb",
+  },
+  {
+    "name": "garlic",
+    "notes": null,
+    "quantity": "3",
+    "unit": "cloves",
+  },
+  {
+    "name": "pork tenderloin",
+    "notes": null,
+    "quantity": "1",
+    "unit": "lb",
+  },
+  {
+    "name": "eggplant",
+    "notes": null,
+    "quantity": "1",
+    "unit": null,
+  },
+  {
+    "name": "onion",
+    "notes": null,
+    "quantity": "1",
+    "unit": null,
+  },
+  {
+    "name": "ground turkey",
+    "notes": null,
+    "quantity": "1",
+    "unit": "lb",
+  },
+  {
+    "name": "cilantro",
+    "notes": null,
+    "quantity": "1",
+    "unit": "tbsp",
+  },
+  {
+    "name": "salmon fillet",
+    "notes": null,
+    "quantity": "6",
+    "unit": "oz",
+  },
+  {
+    "name": "coriander",
+    "notes": null,
+    "quantity": "1",
+    "unit": "tsp",
+  },
+]
+`;
+
+exports[`Grocery engine — golden snapshots (15 scenarios) > scenario: 07_synonym_normalization 2`] = `
+[
+  {
+    "name": "salt",
+  },
+  {
+    "name": "pepper",
+  },
+]
+`;
+
+exports[`Grocery engine — golden snapshots (15 scenarios) > scenario: 08_no_qty_items_removed 1`] = `
+[
+  {
+    "name": "chicken breast",
+    "notes": null,
+    "quantity": "2",
+    "unit": "lb",
+  },
+  {
+    "name": "butter",
+    "notes": null,
+    "quantity": "¼",
+    "unit": "cup",
+  },
+  {
+    "name": "all-purpose flour",
+    "notes": null,
+    "quantity": "½",
+    "unit": "cup",
+  },
+]
+`;
+
+exports[`Grocery engine — golden snapshots (15 scenarios) > scenario: 08_no_qty_items_removed 2`] = `[]`;
+
+exports[`Grocery engine — golden snapshots (15 scenarios) > scenario: 09_multi_protein_selection 1`] = `
+[
+  {
+    "name": "chicken breast",
+    "notes": null,
+    "quantity": "1",
+    "unit": "lb",
+  },
+  {
+    "name": "olive oil",
+    "notes": null,
+    "quantity": "2",
+    "unit": "tbsp",
+  },
+  {
+    "name": "garlic",
+    "notes": null,
+    "quantity": "3",
+    "unit": "cloves",
+  },
+  {
+    "name": "onion",
+    "notes": null,
+    "quantity": "1",
+    "unit": null,
+  },
+  {
+    "name": "chicken broth",
+    "notes": null,
+    "quantity": "1",
+    "unit": "cup",
+  },
+]
+`;
+
+exports[`Grocery engine — golden snapshots (15 scenarios) > scenario: 09_multi_protein_selection 2`] = `
+[
+  {
+    "name": "salt",
+  },
+  {
+    "name": "pepper",
+  },
+]
+`;
+
+exports[`Grocery engine — golden snapshots (15 scenarios) > scenario: 10_double_restriction_partial 1`] = `
+[
+  {
+    "name": "chicken breast",
+    "notes": null,
+    "quantity": "4",
+    "unit": "lb",
+  },
+  {
+    "name": "olive oil",
+    "notes": null,
+    "quantity": "¼",
+    "unit": "cup",
+  },
+  {
+    "name": "onion",
+    "notes": null,
+    "quantity": "1",
+    "unit": null,
+  },
+  {
+    "name": "butter",
+    "notes": null,
+    "quantity": "¼",
+    "unit": "cup",
+  },
+  {
+    "name": "all-purpose flour",
+    "notes": null,
+    "quantity": "½",
+    "unit": "cup",
+  },
+  {
+    "name": "salmon fillet",
+    "notes": null,
+    "quantity": "6",
+    "unit": "oz",
+  },
+  {
+    "name": "pine nuts",
+    "notes": null,
+    "quantity": "1",
+    "unit": "tbsp",
+  },
+  {
+    "name": "parsley",
+    "notes": null,
+    "quantity": "2",
+    "unit": "tbsp",
+  },
+  {
+    "name": "corn tortillas",
+    "notes": null,
+    "quantity": "4",
+    "unit": null,
+  },
+  {
+    "name": "cilantro",
+    "notes": null,
+    "quantity": "2",
+    "unit": "tbsp",
+  },
+]
+`;
+
+exports[`Grocery engine — golden snapshots (15 scenarios) > scenario: 10_double_restriction_partial 2`] = `
+[
+  {
+    "name": "salt",
+  },
+]
+`;
+
+exports[`Grocery engine — golden snapshots (15 scenarios) > scenario: 11_snacks_only 1`] = `
+[
+  {
+    "name": "pork tenderloin",
+    "notes": null,
+    "quantity": "1",
+    "unit": "lb",
+  },
+  {
+    "name": "corn",
+    "notes": null,
+    "quantity": "1",
+    "unit": "cup",
+  },
+  {
+    "name": "water",
+    "notes": null,
+    "quantity": "2",
+    "unit": "cups",
+  },
+  {
+    "name": "oats",
+    "notes": null,
+    "quantity": "1",
+    "unit": "quart",
+  },
+  {
+    "name": "honey",
+    "notes": null,
+    "quantity": "½",
+    "unit": "cup",
+  },
+  {
+    "name": "banana",
+    "notes": null,
+    "quantity": "4",
+    "unit": null,
+  },
+]
+`;
+
+exports[`Grocery engine — golden snapshots (15 scenarios) > scenario: 11_snacks_only 2`] = `[]`;
+
+exports[`Grocery engine — golden snapshots (15 scenarios) > scenario: 12_mixed_meals_snacks 1`] = `
+[
+  {
+    "name": "chicken breast",
+    "notes": null,
+    "quantity": "1",
+    "unit": "lb",
+  },
+  {
+    "name": "olive oil",
+    "notes": null,
+    "quantity": "2",
+    "unit": "tbsp",
+  },
+  {
+    "name": "onion",
+    "notes": null,
+    "quantity": "2",
+    "unit": null,
+  },
+  {
+    "name": "ground beef",
+    "notes": null,
+    "quantity": "1",
+    "unit": "lb",
+  },
+  {
+    "name": "garlic",
+    "notes": null,
+    "quantity": "3",
+    "unit": "cloves",
+  },
+  {
+    "name": "pork tenderloin",
+    "notes": null,
+    "quantity": "2",
+    "unit": "lb",
+  },
+  {
+    "name": "corn",
+    "notes": null,
+    "quantity": "1",
+    "unit": "cup",
+  },
+  {
+    "name": "water",
+    "notes": null,
+    "quantity": "2",
+    "unit": "cups",
+  },
+  {
+    "name": "oats",
+    "notes": null,
+    "quantity": "1",
+    "unit": "cup",
+  },
+  {
+    "name": "honey",
+    "notes": null,
+    "quantity": "2",
+    "unit": "tbsp",
+  },
+  {
+    "name": "banana",
+    "notes": null,
+    "quantity": "1",
+    "unit": null,
+  },
+]
+`;
+
+exports[`Grocery engine — golden snapshots (15 scenarios) > scenario: 12_mixed_meals_snacks 2`] = `
+[
+  {
+    "name": "salt",
+  },
+  {
+    "name": "pepper",
+  },
+]
+`;
+
+exports[`Grocery engine — golden snapshots (15 scenarios) > scenario: 13_large_batch_recipe 1`] = `
+[
+  {
+    "name": "ground beef",
+    "notes": null,
+    "quantity": "1",
+    "unit": "lb",
+  },
+  {
+    "name": "kidney beans",
+    "notes": null,
+    "quantity": "2",
+    "unit": "cups",
+  },
+  {
+    "name": "tomato",
+    "notes": null,
+    "quantity": "4",
+    "unit": null,
+  },
+]
+`;
+
+exports[`Grocery engine — golden snapshots (15 scenarios) > scenario: 13_large_batch_recipe 2`] = `[]`;
+
+exports[`Grocery engine — golden snapshots (15 scenarios) > scenario: 14_multi_swap_priority 1`] = `
+[
+  {
+    "name": "chicken breast",
+    "notes": null,
+    "quantity": "1",
+    "unit": "lb",
+  },
+  {
+    "name": "heavy cream",
+    "notes": null,
+    "quantity": "1/2",
+    "unit": "cup",
+  },
+]
+`;
+
+exports[`Grocery engine — golden snapshots (15 scenarios) > scenario: 14_multi_swap_priority 2`] = `[]`;
+
+exports[`Grocery engine — golden snapshots (15 scenarios) > scenario: 15_empty_client_restrictions 1`] = `
+[
+  {
+    "name": "firm tofu",
+    "notes": null,
+    "quantity": "14",
+    "unit": "oz",
+  },
+  {
+    "name": "broccoli",
+    "notes": null,
+    "quantity": "2",
+    "unit": "cups",
+  },
+  {
+    "name": "garlic",
+    "notes": null,
+    "quantity": "4",
+    "unit": "cloves",
+  },
+  {
+    "name": "olive oil",
+    "notes": null,
+    "quantity": "2",
+    "unit": "tbsp",
+  },
+  {
+    "name": "chicken breast",
+    "notes": null,
+    "quantity": "2",
+    "unit": "lb",
+  },
+  {
+    "name": "onion",
+    "notes": null,
+    "quantity": "1",
+    "unit": null,
+  },
+  {
+    "name": "ground beef",
+    "notes": null,
+    "quantity": "1",
+    "unit": "lb",
+  },
+  {
+    "name": "kidney beans",
+    "notes": null,
+    "quantity": "2",
+    "unit": "cups",
+  },
+  {
+    "name": "tomato",
+    "notes": null,
+    "quantity": "4",
+    "unit": null,
+  },
+  {
+    "name": "shrimp",
+    "notes": null,
+    "quantity": "1/2",
+    "unit": "lb",
+  },
+  {
+    "name": "green onion",
+    "notes": null,
+    "quantity": "2",
+    "unit": null,
+  },
+  {
+    "name": "soy sauce",
+    "notes": null,
+    "quantity": "2",
+    "unit": "tbsp",
+  },
+  {
+    "name": "heavy cream",
+    "notes": null,
+    "quantity": "1/2",
+    "unit": "cup",
+  },
+]
+`;
+
+exports[`Grocery engine — golden snapshots (15 scenarios) > scenario: 15_empty_client_restrictions 2`] = `
+[
+  {
+    "name": "cumin",
+  },
+  {
+    "name": "turmeric",
+  },
+]
+`;

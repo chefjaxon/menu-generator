@@ -1,0 +1,562 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Menu engine — golden snapshots (15 clients) > client: Chicken Only Client 1`] = `
+[
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00266",
+    "selectedProtein": "chicken",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00468",
+    "selectedProtein": "chicken",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00528",
+    "selectedProtein": "chicken",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00576",
+    "selectedProtein": "chicken",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00754",
+    "selectedProtein": null,
+  },
+]
+`;
+
+exports[`Menu engine — golden snapshots (15 clients) > client: Chicken Only Client 2`] = `[]`;
+
+exports[`Menu engine — golden snapshots (15 clients) > client: Cilantro Free Client 1`] = `
+[
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00015",
+    "selectedProtein": "pork",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00075",
+    "selectedProtein": "chicken",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00080",
+    "selectedProtein": "beef",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00202",
+    "selectedProtein": "beef",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00794",
+    "selectedProtein": null,
+  },
+]
+`;
+
+exports[`Menu engine — golden snapshots (15 clients) > client: Cilantro Free Client 2`] = `[]`;
+
+exports[`Menu engine — golden snapshots (15 clients) > client: Composition Client 1`] = `
+[
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00005",
+    "selectedProtein": "chicken",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00040",
+    "selectedProtein": "chicken",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00045",
+    "selectedProtein": "beef",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00296",
+    "selectedProtein": "beef",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00754",
+    "selectedProtein": null,
+  },
+]
+`;
+
+exports[`Menu engine — golden snapshots (15 clients) > client: Composition Client 2`] = `[]`;
+
+exports[`Menu engine — golden snapshots (15 clients) > client: Control Client 1`] = `
+[
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00005",
+    "selectedProtein": "chicken",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00040",
+    "selectedProtein": "chicken",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00045",
+    "selectedProtein": "beef",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00055",
+    "selectedProtein": "turkey",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00802",
+    "selectedProtein": null,
+  },
+]
+`;
+
+exports[`Menu engine — golden snapshots (15 clients) > client: Control Client 2`] = `[]`;
+
+exports[`Menu engine — golden snapshots (15 clients) > client: Corn Free Client 1`] = `
+[
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00005",
+    "selectedProtein": "chicken",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00040",
+    "selectedProtein": "chicken",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00105",
+    "selectedProtein": "chicken",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00140",
+    "selectedProtein": "chicken",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00802",
+    "selectedProtein": null,
+  },
+]
+`;
+
+exports[`Menu engine — golden snapshots (15 clients) > client: Corn Free Client 2`] = `[]`;
+
+exports[`Menu engine — golden snapshots (15 clients) > client: Dairy Free Client 1`] = `
+[
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00282",
+    "selectedProtein": "salmon",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00460",
+    "selectedProtein": "salmon",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00488",
+    "selectedProtein": "chicken",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00508",
+    "selectedProtein": "chicken",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00798",
+    "selectedProtein": null,
+  },
+]
+`;
+
+exports[`Menu engine — golden snapshots (15 clients) > client: Dairy Free Client 2`] = `[]`;
+
+exports[`Menu engine — golden snapshots (15 clients) > client: Dairy and Gluten Free Client 1`] = `
+[
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00095",
+    "selectedProtein": "salmon",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00468",
+    "selectedProtein": "chicken",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00476",
+    "selectedProtein": "salmon",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00516",
+    "selectedProtein": "salmon",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00798",
+    "selectedProtein": null,
+  },
+]
+`;
+
+exports[`Menu engine — golden snapshots (15 clients) > client: Dairy and Gluten Free Client 2`] = `[]`;
+
+exports[`Menu engine — golden snapshots (15 clients) > client: Dairy and Nut Free Client 1`] = `
+[
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00020",
+    "selectedProtein": "turkey",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00110",
+    "selectedProtein": "beef",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00237",
+    "selectedProtein": "beef",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00270",
+    "selectedProtein": "beef",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00798",
+    "selectedProtein": null,
+  },
+]
+`;
+
+exports[`Menu engine — golden snapshots (15 clients) > client: Dairy and Nut Free Client 2`] = `[]`;
+
+exports[`Menu engine — golden snapshots (15 clients) > client: Egg Free Client 1`] = `
+[
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00155",
+    "selectedProtein": "turkey",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00172",
+    "selectedProtein": "chicken",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00247",
+    "selectedProtein": "turkey",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00291",
+    "selectedProtein": "chicken",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00754",
+    "selectedProtein": null,
+  },
+]
+`;
+
+exports[`Menu engine — golden snapshots (15 clients) > client: Egg Free Client 2`] = `[]`;
+
+exports[`Menu engine — golden snapshots (15 clients) > client: Gluten Free Client 1`] = `
+[
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00005",
+    "selectedProtein": "chicken",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00040",
+    "selectedProtein": "chicken",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00045",
+    "selectedProtein": "beef",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00105",
+    "selectedProtein": "chicken",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00802",
+    "selectedProtein": null,
+  },
+]
+`;
+
+exports[`Menu engine — golden snapshots (15 clients) > client: Gluten Free Client 2`] = `[]`;
+
+exports[`Menu engine — golden snapshots (15 clients) > client: Italian Lover Client 1`] = `
+[
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00050",
+    "selectedProtein": "pork",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00060",
+    "selectedProtein": "salmon",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00125",
+    "selectedProtein": "salmon",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00155",
+    "selectedProtein": "turkey",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00172",
+    "selectedProtein": "chicken",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00754",
+    "selectedProtein": null,
+  },
+]
+`;
+
+exports[`Menu engine — golden snapshots (15 clients) > client: Italian Lover Client 2`] = `[]`;
+
+exports[`Menu engine — golden snapshots (15 clients) > client: Mushroom Free Client 1`] = `
+[
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00005",
+    "selectedProtein": "chicken",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00040",
+    "selectedProtein": "chicken",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00045",
+    "selectedProtein": "beef",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00105",
+    "selectedProtein": "chicken",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00802",
+    "selectedProtein": null,
+  },
+]
+`;
+
+exports[`Menu engine — golden snapshots (15 clients) > client: Mushroom Free Client 2`] = `[]`;
+
+exports[`Menu engine — golden snapshots (15 clients) > client: Nut Free Client 1`] = `
+[
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00020",
+    "selectedProtein": "turkey",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00095",
+    "selectedProtein": "salmon",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00266",
+    "selectedProtein": "chicken",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00282",
+    "selectedProtein": "salmon",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00798",
+    "selectedProtein": null,
+  },
+]
+`;
+
+exports[`Menu engine — golden snapshots (15 clients) > client: Nut Free Client 2`] = `[]`;
+
+exports[`Menu engine — golden snapshots (15 clients) > client: Plant Based Client 1`] = `
+[
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00168",
+    "selectedProtein": "tofu",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00738",
+    "selectedProtein": "tofu",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00262",
+    "selectedProtein": "tofu",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00320",
+    "selectedProtein": "tofu",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00798",
+    "selectedProtein": null,
+  },
+]
+`;
+
+exports[`Menu engine — golden snapshots (15 clients) > client: Plant Based Client 2`] = `[]`;
+
+exports[`Menu engine — golden snapshots (15 clients) > client: Seafood Only Client 1`] = `
+[
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00130",
+    "selectedProtein": "shrimp",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00192",
+    "selectedProtein": "shrimp",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00257",
+    "selectedProtein": "shrimp",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00282",
+    "selectedProtein": "salmon",
+  },
+  {
+    "firstOmitNote": null,
+    "omitNoteCount": 0,
+    "recipeId": "fix-00798",
+    "selectedProtein": null,
+  },
+]
+`;
+
+exports[`Menu engine — golden snapshots (15 clients) > client: Seafood Only Client 2`] = `[]`;

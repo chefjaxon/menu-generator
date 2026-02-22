@@ -1,5 +1,261 @@
 import type { GroceryItem, DuplicatePair } from './types';
 import { INGREDIENT_ALIASES } from './ingredient-aliases';
+import { canonicalizeRestriction, ingredientMatchesRestriction } from './restriction-utils';
+import { classifyIngredient } from './ingredient-categories';
+
+// ── Grocery debug trace types (exported for test use) ─────────────────────────
+
+export type GroceryIngredientAction = 'keep' | 'swap' | 'skip-optional' | 'skip-no-swap' | 'removed-no-qty';
+
+export interface GroceryIngredientTrace {
+  recipeId: string;
+  originalName: string;
+  normalizedName: string;
+  aliasApplied: boolean;
+  prepStripped: boolean;
+  quantity: string | null;
+  unit: string | null;
+  restrictionApplied?: string;
+  action: GroceryIngredientAction;
+  swapTo?: string;
+  mergedWith?: string;
+}
+
+export interface GroceryBuildTrace {
+  rawIngredientCount: number;
+  perIngredient: GroceryIngredientTrace[];
+}
+
+// ── Pure grocery input types ──────────────────────────────────────────────────
+
+export interface GroceryMenuItem {
+  recipeId: string;
+  selectedProtein: string | null;
+  recipe: {
+    ingredients: Array<{
+      id: string;
+      name: string;
+      quantity: string | null;
+      unit: string | null;
+      role: string;
+      swaps: Array<{
+        substituteIngredient: string;
+        substituteQty: string | null;
+        substituteUnit: string | null;
+        restriction: string;
+        priority: number;
+      }>;
+    }>;
+    proteinSwaps: Array<{ protein: string }>;
+  };
+}
+
+export interface BuildGroceryOptions {
+  /** Skip the Claude gray-zone normalization step entirely. Always true in tests. */
+  skipClaudeNormalization?: boolean;
+  /** When true, populate trace in the returned result. */
+  debug?: boolean;
+}
+
+export interface BuildGroceryResult {
+  toKeep: GroceryItem[];
+  toRemove: GroceryItem[];
+  trace?: GroceryBuildTrace;
+}
+
+/**
+ * Pure grocery list builder. Takes all data as arguments, performs no IO and no DB calls.
+ * Used by both the production IO wrapper (generateGroceryItemsFromMenu) and by tests.
+ *
+ * Steps:
+ * 1. Iterate menu items → collect raw ingredients, applying protein exclusion + restriction swaps
+ * 2. Static alias normalization
+ * 3. Separate items with no qty+unit into "removed" set
+ * 4. Consolidate exact duplicates
+ * 5. Deduplicate removed items by name
+ *
+ * Note: Claude gray-zone normalization (step 2b) is async and lives in the IO wrapper.
+ * Pass skipClaudeNormalization=true in tests (it is always skipped here — caller handles it).
+ */
+export function buildGroceryFromData(
+  menuItems: GroceryMenuItem[],
+  clientRestrictions: string[],
+  options: BuildGroceryOptions = {},
+): BuildGroceryResult {
+  const debug = options.debug ?? false;
+  const traces: GroceryIngredientTrace[] = [];
+  const rawItems: GroceryItem[] = [];
+  let sortIdx = 0;
+  const fakeMenuId = 'test-menu';
+  const now = new Date().toISOString();
+
+  for (const menuItem of menuItems) {
+    // Determine non-selected proteins for this menu item
+    const nonSelectedProteins: string[] = [];
+    if (menuItem.selectedProtein && menuItem.recipe.proteinSwaps.length > 1) {
+      for (const ps of menuItem.recipe.proteinSwaps) {
+        if (ps.protein.toLowerCase().trim() !== menuItem.selectedProtein.toLowerCase().trim()) {
+          nonSelectedProteins.push(ps.protein.toLowerCase().trim());
+        }
+      }
+    }
+
+    for (const ing of menuItem.recipe.ingredients) {
+      // Skip non-selected protein ingredients
+      if (nonSelectedProteins.length > 0) {
+        const isNonSelectedProtein = nonSelectedProteins.some(
+          (p) => ingredientMatchesRestriction(ing.name, p)
+        );
+        if (isNonSelectedProtein) continue;
+      }
+
+      if (clientRestrictions.length > 0) {
+        let restricted = false;
+        let appliedRestriction: string | undefined;
+        let appliedSwap: { substituteIngredient: string; substituteQty: string | null; substituteUnit: string | null } | null = null;
+
+        for (const restriction of clientRestrictions) {
+          if (!ingredientMatchesRestriction(ing.name, restriction)) continue;
+          restricted = true;
+          appliedRestriction = restriction;
+
+          if (ing.role === 'core' || ing.role === 'garnish') {
+            const candidate = ing.swaps
+              .filter((s) => canonicalizeRestriction(s.restriction) === restriction)
+              .sort((a, b) => b.priority - a.priority)[0];
+            if (candidate && (!appliedSwap || candidate.priority > ((appliedSwap as { priority?: number }).priority ?? 0))) {
+              appliedSwap = candidate;
+            }
+          }
+        }
+
+        if (restricted) {
+          if (appliedSwap) {
+            const item: GroceryItem = {
+              id: `raw-${sortIdx}`,
+              menuId: fakeMenuId,
+              name: appliedSwap.substituteIngredient,
+              quantity: appliedSwap.substituteQty ?? ing.quantity,
+              unit: appliedSwap.substituteUnit ?? ing.unit,
+              checked: false,
+              source: 'recipe',
+              recipeItemId: ing.id,
+              notes: `Swap for ${ing.name}`,
+              clientNote: null,
+              sortOrder: sortIdx++,
+              category: 'other',
+              createdAt: now,
+            };
+            rawItems.push(item);
+            if (debug) traces.push({
+              recipeId: menuItem.recipeId,
+              originalName: ing.name,
+              normalizedName: appliedSwap.substituteIngredient,
+              aliasApplied: false,
+              prepStripped: false,
+              quantity: item.quantity,
+              unit: item.unit,
+              restrictionApplied: appliedRestriction,
+              action: 'swap',
+              swapTo: appliedSwap.substituteIngredient,
+            });
+          } else {
+            // optional/garnish with no swap → skip; core no swap → skip defensively
+            const action: GroceryIngredientAction = ing.role === 'optional' || ing.role === 'garnish'
+              ? 'skip-optional'
+              : 'skip-no-swap';
+            if (debug) traces.push({
+              recipeId: menuItem.recipeId,
+              originalName: ing.name,
+              normalizedName: ing.name,
+              aliasApplied: false,
+              prepStripped: false,
+              quantity: ing.quantity,
+              unit: ing.unit,
+              restrictionApplied: appliedRestriction,
+              action,
+            });
+          }
+          continue;
+        }
+      }
+
+      const item: GroceryItem = {
+        id: `raw-${sortIdx}`,
+        menuId: fakeMenuId,
+        name: ing.name,
+        quantity: ing.quantity,
+        unit: ing.unit,
+        checked: false,
+        source: 'recipe',
+        recipeItemId: ing.id,
+        notes: null,
+        clientNote: null,
+        sortOrder: sortIdx++,
+        category: 'other',
+        createdAt: now,
+      };
+      rawItems.push(item);
+
+      if (debug) {
+        const originalKey = ing.name.toLowerCase().trim();
+        const directMatch = INGREDIENT_ALIASES.get(originalKey);
+        const stripped = stripPreparationDescriptors(ing.name);
+        const strippedKey = stripped.toLowerCase().trim();
+        const aliasMatch = INGREDIENT_ALIASES.get(strippedKey);
+        const normalizedName = directMatch ?? aliasMatch ?? strippedKey;
+
+        traces.push({
+          recipeId: menuItem.recipeId,
+          originalName: ing.name,
+          normalizedName,
+          aliasApplied: normalizedName !== strippedKey,
+          prepStripped: strippedKey !== originalKey,
+          quantity: ing.quantity,
+          unit: ing.unit,
+          action: 'keep',
+        });
+      }
+    }
+  }
+
+  // Step 1: Static alias normalization
+  const aliasNormalized = normalizeIngredientNames(rawItems);
+
+  // Step 2: Separate no-qty/no-unit items
+  const toKeepRaw: GroceryItem[] = [];
+  const toRemoveRaw: GroceryItem[] = [];
+  for (const item of aliasNormalized) {
+    if (item.quantity === null && item.unit === null) {
+      toRemoveRaw.push(item);
+    } else {
+      toKeepRaw.push(item);
+    }
+  }
+
+  // Step 3: Consolidate exact duplicates among kept items
+  const toKeep = consolidateExactDuplicates(toKeepRaw);
+
+  // Step 4: Deduplicate removed items by canonical name
+  const removedByName = new Map<string, GroceryItem>();
+  for (const item of toRemoveRaw) {
+    const key = item.name.toLowerCase().trim();
+    if (!removedByName.has(key)) removedByName.set(key, item);
+  }
+  const toRemove = Array.from(removedByName.values());
+
+  // Apply categories
+  const toKeepWithCat = toKeep.map((item) => ({ ...item, category: classifyIngredient(item.name) }));
+  const toRemoveWithCat = toRemove.map((item) => ({ ...item, category: classifyIngredient(item.name) }));
+
+  const result: BuildGroceryResult = { toKeep: toKeepWithCat, toRemove: toRemoveWithCat };
+
+  if (debug) {
+    result.trace = { rawIngredientCount: rawItems.length, perIngredient: traces };
+  }
+
+  return result;
+}
 
 // --- Ingredient text parsing ---
 
