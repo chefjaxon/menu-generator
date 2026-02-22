@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { Menu, GroceryItem, RemovedItem } from '@/lib/types';
-import { findDuplicatePairs } from '@/lib/grocery-utils';
+import { findDuplicatePairs } from '@/lib/grocery-similarity';
 import { ClientSelectionSection } from './ClientSelectionSection';
 import { GroceryListSection } from './GroceryListSection';
 import { PastePanelSection } from './PastePanelSection';

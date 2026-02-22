@@ -22,6 +22,10 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      // server-only throws if imported outside Next.js server context.
+      // In vitest (Node), mock it as an empty module so tests can import
+      // server-side modules (e.g. prisma.ts) without errors.
+      'server-only': path.resolve(__dirname, 'src/lib/test-fixtures/server-only-mock.ts'),
     },
   },
 });
