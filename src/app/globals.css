@@ -1,33 +1,56 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 @import "tailwindcss";
 
 @theme {
-  --color-background: #ffffff;
-  --color-foreground: #0a0a0a;
-  --color-muted: #f5f5f5;
-  --color-muted-foreground: #737373;
-  --color-border: #e5e5e5;
-  --color-primary: #18181b;
-  --color-primary-foreground: #fafafa;
-  --color-secondary: #f5f5f5;
-  --color-secondary-foreground: #18181b;
-  --color-accent: #f5f5f5;
-  --color-accent-foreground: #18181b;
-  --color-destructive: #ef4444;
-  --color-destructive-foreground: #fafafa;
-  --color-ring: #18181b;
-  --color-card: #ffffff;
-  --color-card-foreground: #0a0a0a;
-  --color-popover: #ffffff;
-  --color-popover-foreground: #0a0a0a;
-  --radius-sm: 0.25rem;
-  --radius-md: 0.375rem;
-  --radius-lg: 0.5rem;
+  /* Warm backgrounds */
+  --color-background: #faf8f5;
+  --color-foreground: #1c1917;
+  --color-muted: #f0ece6;
+  --color-muted-foreground: #78716c;
+  --color-border: #e7e2db;
+
+  /* Primary = warm charcoal (stone-800) */
+  --color-primary: #292524;
+  --color-primary-foreground: #faf8f5;
+
+  /* Secondary */
+  --color-secondary: #f0ece6;
+  --color-secondary-foreground: #292524;
+
+  /* Accent = muted terracotta clay */
+  --color-accent: #c4765a;
+  --color-accent-foreground: #ffffff;
+
+  /* Destructive */
+  --color-destructive: #dc2626;
+  --color-destructive-foreground: #faf8f5;
+
+  /* Ring = accent color for focus states */
+  --color-ring: #c4765a;
+
+  /* Cards */
+  --color-card: #fdfcfa;
+  --color-card-foreground: #1c1917;
+  --color-popover: #fdfcfa;
+  --color-popover-foreground: #1c1917;
+
+  /* Improved border radii */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  /* Font */
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
 body {
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans);
   background: var(--color-background);
   color: var(--color-foreground);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 @media print {
@@ -73,4 +96,82 @@ body {
     outline: none !important;
     padding: 0 !important;
   }
+}
+
+/* =========================================================
+   UTILITY COMPONENT CLASSES
+   Use these on future pages instead of repeating Tailwind strings.
+   Automatically updated when theme tokens change.
+   ========================================================= */
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background-color: var(--color-primary);
+  color: var(--color-primary-foreground);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: opacity 150ms;
+  cursor: pointer;
+}
+.btn-primary:hover {
+  opacity: 0.9;
+}
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background-color: transparent;
+  color: var(--color-foreground);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background-color 150ms;
+  cursor: pointer;
+}
+.btn-secondary:hover {
+  background-color: var(--color-muted);
+}
+
+.card {
+  background-color: var(--color-card);
+  color: var(--color-card-foreground);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+/* Portal (chef/client) sticky headers */
+.portal-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: var(--color-primary);
+  color: var(--color-primary-foreground);
+  padding: 0.875rem 1rem;
+}
+.portal-header-inner {
+  max-width: 32rem;
+  margin-left: auto;
+  margin-right: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }

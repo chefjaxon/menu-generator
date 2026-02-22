@@ -11,9 +11,11 @@ export function AdminMain({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <main className="flex-1 ml-64">
-      <div className="p-8 max-w-6xl">
-        {children}
+    <main className="flex-1 lg:ml-64">
+      <div className="pt-14 lg:pt-0">
+        <div className="p-6 lg:p-8 max-w-6xl">
+          {children}
+        </div>
       </div>
     </main>
   );

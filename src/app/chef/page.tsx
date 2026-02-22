@@ -116,8 +116,8 @@ export default async function ChefDashboardPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="bg-foreground text-background px-4 py-4 sticky top-0 z-10">
-        <div className="max-w-lg mx-auto flex items-center justify-between">
+      <div className="portal-header">
+        <div className="portal-header-inner">
           <div>
             <h1 className="text-base font-semibold">Chef Dashboard</h1>
             {chef && <p className="text-xs opacity-70">{chef.name}</p>}

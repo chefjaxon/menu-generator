@@ -117,7 +117,7 @@ export default async function ChefRecipePage({
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="bg-foreground text-background px-4 py-4 sticky top-0 z-10">
+      <div className="portal-header">
         <div className="max-w-lg mx-auto">
           <Link
             href={`/chef/grocery/${menuId}`}

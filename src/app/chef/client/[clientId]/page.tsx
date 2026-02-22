@@ -33,7 +33,7 @@ export default async function ChefClientProfilePage({
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="bg-foreground text-background px-4 py-4 sticky top-0 z-10">
+      <div className="portal-header">
         <div className="max-w-lg mx-auto flex items-center gap-3">
           <Link href="/chef" className="text-background/70 hover:text-background transition-colors">
             <ArrowLeft className="h-5 w-5" />

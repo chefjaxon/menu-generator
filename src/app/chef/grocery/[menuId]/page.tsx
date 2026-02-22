@@ -70,7 +70,7 @@ export default async function ChefGroceryPage({
   return (
     <div className="min-h-screen bg-background">
       {/* Chef header */}
-      <div className="bg-foreground text-background px-4 py-4 sticky top-0 z-10">
+      <div className="portal-header">
         <div className="max-w-lg mx-auto">
           <div className="flex items-center justify-between mb-1">
             <Link
