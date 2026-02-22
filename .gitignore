@@ -7,6 +7,9 @@
 # testing
 /coverage
 
+# real data fixtures (may contain user data — never commit)
+/src/lib/test-fixtures/real/
+
 # next.js
 /.next/
 /out/
