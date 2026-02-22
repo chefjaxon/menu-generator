@@ -2,6 +2,7 @@ import type { GroceryItem, DuplicatePair } from './types';
 import { INGREDIENT_ALIASES } from './ingredient-aliases';
 import { canonicalizeRestriction, ingredientMatchesRestriction } from './restriction-utils';
 import { classifyIngredient } from './ingredient-categories';
+import { prisma } from './prisma';
 
 // ── Grocery debug trace types (exported for test use) ─────────────────────────
 
@@ -1024,23 +1025,66 @@ export function normalizeIngredientNames(items: GroceryItem[]): GroceryItem[] {
   }));
 }
 
-// In-process cache for Claude gray-zone decisions. Ephemeral (resets on server restart).
-// Keyed on sorted pair of canonical names so order doesn't matter.
+// In-process cache for Claude gray-zone decisions. Ephemeral — survives within one
+// server process but resets on restart. DB cache (IngredientNormCache) is the
+// durable layer that survives deployments.
 const grayZoneCache = new Map<string, boolean>();
 
-function grayZoneCacheKey(nameA: string, nameB: string): string {
-  return [nameA, nameB].sort().join('|||');
+/** Returns [keyA, keyB] sorted alphabetically so pair order is canonical. */
+function grayZoneCacheKey(nameA: string, nameB: string): [string, string] {
+  const sorted = [nameA.toLowerCase().trim(), nameB.toLowerCase().trim()].sort() as [string, string];
+  return sorted;
 }
 
 /**
  * Ask Claude Haiku whether two ingredient names should be treated as the same item.
- * Returns true = merge, false = keep separate (including on any error/timeout).
- * Times out after 5 seconds to never block generation.
+ *
+ * Lookup order:
+ *   1. In-process Map cache (fastest — same process, same deploy)
+ *   2. DB cache (IngredientNormCache — survives across deployments)
+ *   3. Claude API call (5-second timeout, strict response schema validation)
+ *   4. Fallback: false (keep separate) — never blocks generation
+ *
+ * Instrumentation: logs [claude-norm] line with source and outcome for each call.
  * MUST only be called server-side; requires ANTHROPIC_API_KEY env var.
  */
 async function askClaudeToMerge(nameA: string, nameB: string): Promise<boolean> {
+  const [keyA, keyB] = grayZoneCacheKey(nameA, nameB);
+  const memKey = `${keyA}|||${keyB}`;
+  const pair = `"${nameA}" + "${nameB}"`;
+
+  // 1. In-process cache
+  if (grayZoneCache.has(memKey)) {
+    const result = grayZoneCache.get(memKey)!;
+    console.log(`[claude-norm] used=memory pair=${pair} result=${result}`);
+    return result;
+  }
+
+  // 2. DB cache
+  try {
+    const cached = await prisma.ingredientNormCache.findUnique({
+      where: { keyA_keyB: { keyA, keyB } },
+    });
+    if (cached !== null) {
+      grayZoneCache.set(memKey, cached.shouldMerge);
+      console.log(`[claude-norm] used=db-cache pair=${pair} result=${cached.shouldMerge}`);
+      return cached.shouldMerge;
+    }
+  } catch {
+    // DB lookup failure is non-fatal — fall through to Claude call
+    console.log(`[claude-norm] db-cache-error pair=${pair} — falling through to Claude`);
+  }
+
+  // 3. Claude API call
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return false;
+  if (!apiKey) {
+    console.log(`[claude-norm] used=fallback reason=no-key pair=${pair} result=false`);
+    grayZoneCache.set(memKey, false);
+    return false;
+  }
+
+  let shouldMerge = false;
+  let logReason = 'ok';
 
   try {
     const controller = new AbortController();
@@ -1067,14 +1111,49 @@ async function askClaudeToMerge(nameA: string, nameB: string): Promise<boolean> 
     });
 
     clearTimeout(timeout);
-    if (!response.ok) return false;
 
-    const data = await response.json();
-    const text: string = data?.content?.[0]?.text ?? '';
-    return text.trim().toLowerCase().startsWith('yes');
-  } catch {
-    return false;
+    if (!response.ok) {
+      logReason = `http-${response.status}`;
+    } else {
+      const data: unknown = await response.json();
+      // Strict schema validation — must have content[0].text as a string
+      const text =
+        data !== null &&
+        typeof data === 'object' &&
+        'content' in data &&
+        Array.isArray((data as Record<string, unknown>).content) &&
+        (data as Record<string, unknown[]>).content.length > 0 &&
+        typeof ((data as Record<string, unknown[]>).content[0] as Record<string, unknown>).text === 'string'
+          ? (((data as Record<string, unknown[]>).content[0] as Record<string, unknown>).text as string)
+          : null;
+
+      if (text === null) {
+        logReason = 'invalid-schema';
+      } else {
+        shouldMerge = text.trim().toLowerCase().startsWith('yes');
+        logReason = 'ok';
+      }
+    }
+  } catch (err) {
+    logReason = err instanceof Error && err.name === 'AbortError' ? 'timeout' : 'network-error';
   }
+
+  console.log(`[claude-norm] used=claude reason=${logReason} pair=${pair} result=${shouldMerge}`);
+
+  // Write back to both caches (even on fallback — avoids re-querying Claude for the same pair)
+  grayZoneCache.set(memKey, shouldMerge);
+  try {
+    await prisma.ingredientNormCache.upsert({
+      where: { keyA_keyB: { keyA, keyB } },
+      create: { keyA, keyB, shouldMerge },
+      update: { shouldMerge },
+    });
+  } catch {
+    // DB write failure is non-fatal — in-process cache still works this request
+    console.log(`[claude-norm] db-cache-write-error pair=${pair} — result not persisted`);
+  }
+
+  return shouldMerge;
 }
 
 /**
@@ -1099,15 +1178,8 @@ export async function applyClaudeGrayZoneNormalization(
       const sim = nameSimilarity(names[i], names[j]);
       if (sim < 0.7 || sim >= 0.8) continue;
 
-      const cacheKey = grayZoneCacheKey(names[i], names[j]);
-      let shouldMerge: boolean;
-
-      if (grayZoneCache.has(cacheKey)) {
-        shouldMerge = grayZoneCache.get(cacheKey)!;
-      } else {
-        shouldMerge = await askClaudeToMerge(names[i], names[j]);
-        grayZoneCache.set(cacheKey, shouldMerge);
-      }
+      // askClaudeToMerge handles all caching (in-process + DB) internally
+      const shouldMerge = await askClaudeToMerge(names[i], names[j]);
 
       if (shouldMerge) {
         renameMap.set(names[j].toLowerCase().trim(), names[i]);
