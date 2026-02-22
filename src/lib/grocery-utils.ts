@@ -2,7 +2,6 @@ import type { GroceryItem, DuplicatePair } from './types';
 import { INGREDIENT_ALIASES } from './ingredient-aliases';
 import { canonicalizeRestriction, ingredientMatchesRestriction } from './restriction-utils';
 import { classifyIngredient } from './ingredient-categories';
-import { prisma } from './prisma';
 
 // ── Grocery debug trace types (exported for test use) ─────────────────────────
 
@@ -1062,6 +1061,7 @@ async function askClaudeToMerge(nameA: string, nameB: string): Promise<boolean> 
 
   // 2. DB cache
   try {
+    const { prisma } = await import('./prisma');
     const cached = await prisma.ingredientNormCache.findUnique({
       where: { keyA_keyB: { keyA, keyB } },
     });
@@ -1143,6 +1143,7 @@ async function askClaudeToMerge(nameA: string, nameB: string): Promise<boolean> 
   // Write back to both caches (even on fallback — avoids re-querying Claude for the same pair)
   grayZoneCache.set(memKey, shouldMerge);
   try {
+    const { prisma } = await import('./prisma');
     await prisma.ingredientNormCache.upsert({
       where: { keyA_keyB: { keyA, keyB } },
       create: { keyA, keyB, shouldMerge },
