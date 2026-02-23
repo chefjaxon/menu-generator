@@ -683,10 +683,10 @@ export const INGREDIENT_ALIASES: Map<string, string> = new Map([
   ['hemp seed', 'hemp seeds'],
 
   // ── Yukon potato ──────────────────────────────────────────────────────────
-  ['yukon potato', 'potato'],
-  ['yukon potatoes', 'potato'],
-  ['yukon gold potato', 'potato'],
-  ['yukon gold potatoes', 'potato'],
+  ['yukon potato', 'yukon potatoes'],
+  ['yukon potatoes', 'yukon potatoes'],
+  ['yukon gold potato', 'yukon potatoes'],
+  ['yukon gold potatoes', 'yukon potatoes'],
 
   // ── Parsnip (plural) ──────────────────────────────────────────────────────
   ['parsnips', 'parsnip'],
@@ -706,9 +706,9 @@ export const INGREDIENT_ALIASES: Map<string, string> = new Map([
   ['skinless salmon fillet', 'salmon'],
 
   // ── Strip steak ───────────────────────────────────────────────────────────
-  ['strip steak', 'steak'],
-  ['new york strip', 'steak'],
-  ['ny strip', 'steak'],
+  ['strip steak', 'strip steak'],
+  ['new york strip', 'strip steak'],
+  ['ny strip', 'strip steak'],
 
   // ── Cocoa powder (asterisk/variant handling) ──────────────────────────────
   ['cocoa powder*', 'cocoa powder'],

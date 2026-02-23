@@ -308,6 +308,17 @@ export function parseIngredientLine(line: string): ParsedIngredientLine {
     return { quantity: qty.trim(), unit: null, name: rest.trim() };
   }
 
+  // Compound weight: "2 pounds 4 ounces snap peas" → qty: "2¼", unit: "lb", name: "snap peas"
+  const compoundWeightMatch = trimmed.match(
+    /^(\d+(?:[/.]\d+)?)\s+(pounds?|lbs?)\s+(\d+(?:[/.]\d+)?)\s+(ounces?|oz)\s+(.+)$/i
+  );
+  if (compoundWeightMatch) {
+    const [, lbQty, , ozQty, , rest] = compoundWeightMatch;
+    const totalOz = parseFloat(lbQty) * 16 + parseFloat(ozQty);
+    const formatted = formatWeight(totalOz);
+    return { quantity: formatted.quantity, unit: formatted.unit || null, name: rest.trim() };
+  }
+
   // Standard: leading number (int, decimal, or fraction), optional unit token, rest is name
   const match = trimmed.match(
     /^(\d+(?:[/.]\d+)?(?:\s+\d+\/\d+)?)\s+([a-zA-Z]+)\s+(.+)$/
@@ -691,6 +702,12 @@ function formatWeight(totalOz: number): { quantity: string; unit: string } {
     const remOz = Math.round((lbs - wholeLbs) * 16);
     if (remOz === 0) {
       return { quantity: formatQuantity(wholeLbs), unit: 'lb' };
+    }
+    // Try to express as a fractional lb (e.g. 2¼ lb) when the fraction is clean
+    const fracFormatted = formatQuantity(lbs);
+    const fracReparsed = parseQuantityFromFormatted(fracFormatted);
+    if (fracReparsed !== null && Math.abs(fracReparsed - lbs) < 0.02) {
+      return { quantity: fracFormatted, unit: 'lb' };
     }
     return { quantity: `${formatQuantity(wholeLbs)} lb + ${formatQuantity(remOz)} oz`, unit: '' };
   }
