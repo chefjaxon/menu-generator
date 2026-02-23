@@ -47,9 +47,22 @@ function pairKey(pair: DuplicatePair) {
   return `${pair.itemA.id}|${pair.itemB.id}`;
 }
 
+type OmitReason = 'bracketed' | 'no-quantity';
+
+interface OmittedItem {
+  item: GroceryItem;
+  reason: OmitReason;
+  originalName: string; // name before bracket stripping
+}
+
+function hasBrackets(name: string): boolean {
+  return /\[/.test(name);
+}
+
 export function GroceryConsolidatorClient() {
   const [inputText, setInputText] = useState('');
   const [items, setItems] = useState<GroceryItem[] | null>(null);
+  const [omittedItems, setOmittedItems] = useState<OmittedItem[]>([]);
   const [duplicatePairs, setDuplicatePairs] = useState<DuplicatePair[]>([]);
   const [originalCount, setOriginalCount] = useState(0);
   const [dismissedPairKeys, setDismissedPairKeys] = useState<Set<string>>(new Set());
@@ -72,11 +85,31 @@ export function GroceryConsolidatorClient() {
       category: classifyIngredient(item.name),
     }));
 
-    const pairs = findDuplicatePairs(groceryItems);
+    // Separate out omitted items
+    const kept: GroceryItem[] = [];
+    const omitted: OmittedItem[] = [];
 
-    setItems(groceryItems);
+    for (const item of groceryItems) {
+      if (hasBrackets(item.name)) {
+        omitted.push({ item, reason: 'bracketed', originalName: item.name });
+      } else if (!item.quantity && !item.unit) {
+        omitted.push({ item, reason: 'no-quantity', originalName: item.name });
+      } else {
+        kept.push(item);
+      }
+    }
+
+    const pairs = findDuplicatePairs(kept);
+
+    setItems(kept);
+    setOmittedItems(omitted);
     setDuplicatePairs(pairs);
     setDismissedPairKeys(new Set());
+  }
+
+  function handleAddOmitted(omitted: OmittedItem) {
+    setOmittedItems((prev) => prev.filter((o) => o.item.id !== omitted.item.id));
+    setItems((prev) => (prev ? [...prev, omitted.item] : [omitted.item]));
   }
 
   function handleDismiss(pair: DuplicatePair) {
@@ -136,9 +169,13 @@ export function GroceryConsolidatorClient() {
             {/* Summary bar */}
             <div className="flex items-center justify-between gap-4 p-3 rounded-lg bg-muted/50 border border-border">
               <p className="text-sm text-muted-foreground">
-                <span className="font-semibold text-foreground">{originalCount}</span> lines
-                consolidated into{' '}
-                <span className="font-semibold text-foreground">{items.length}</span> unique items
+                <span className="font-semibold text-foreground">{originalCount}</span> lines →{' '}
+                <span className="font-semibold text-foreground">{items.length}</span> items
+                {omittedItems.length > 0 && (
+                  <span className="text-muted-foreground">
+                    {' '}({omittedItems.length} omitted)
+                  </span>
+                )}
               </p>
               <button
                 onClick={handleCopy}
@@ -206,6 +243,50 @@ export function GroceryConsolidatorClient() {
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Omitted items */}
+            {omittedItems.length > 0 && (
+              <div className="border border-border rounded-lg overflow-hidden">
+                <div className="bg-muted/70 px-4 py-2 border-b border-border flex items-center justify-between">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Omitted Items ({omittedItems.length})
+                  </h3>
+                  <span className="text-xs text-muted-foreground">
+                    Click + to add to the consolidated list
+                  </span>
+                </div>
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground">
+                      <th className="py-2 px-3 text-left">Name</th>
+                      <th className="py-2 px-3 text-left w-40">Reason</th>
+                      <th className="py-2 px-3 text-center w-16"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {omittedItems.map((o) => (
+                      <tr key={o.item.id} className="border-b border-border last:border-0">
+                        <td className="py-2 px-3 text-sm text-muted-foreground">
+                          {o.originalName}
+                        </td>
+                        <td className="py-2 px-3 text-xs text-muted-foreground">
+                          {o.reason === 'bracketed' ? 'Has [ ] brackets' : 'No measurement'}
+                        </td>
+                        <td className="py-2 px-3 text-center">
+                          <button
+                            onClick={() => handleAddOmitted(o)}
+                            className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-colors"
+                            title="Add to consolidated list"
+                          >
+                            +
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
 
