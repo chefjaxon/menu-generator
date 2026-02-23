@@ -51,7 +51,7 @@ exports[`Grocery engine — golden snapshots (15 scenarios) > scenario: 01_no_re
     "unit": "cup",
   },
   {
-    "name": "salmon fillet",
+    "name": "salmon",
     "notes": null,
     "quantity": "6",
     "unit": "oz",
@@ -145,7 +145,7 @@ exports[`Grocery engine — golden snapshots (15 scenarios) > scenario: 02_dairy
     "unit": "cup",
   },
   {
-    "name": "salmon fillet",
+    "name": "salmon",
     "notes": null,
     "quantity": "6",
     "unit": "oz",
@@ -233,7 +233,7 @@ exports[`Grocery engine — golden snapshots (15 scenarios) > scenario: 03_glute
     "unit": "oz",
   },
   {
-    "name": "salmon fillet",
+    "name": "salmon",
     "notes": null,
     "quantity": "6",
     "unit": "oz",
@@ -333,7 +333,7 @@ exports[`Grocery engine — golden snapshots (15 scenarios) > scenario: 04_nut_f
     "unit": "tbsp",
   },
   {
-    "name": "salmon fillet",
+    "name": "salmon",
     "notes": null,
     "quantity": "6",
     "unit": "oz",
@@ -409,7 +409,7 @@ exports[`Grocery engine — golden snapshots (15 scenarios) > scenario: 05_egg_f
     "unit": "lb",
   },
   {
-    "name": "salmon fillet",
+    "name": "salmon",
     "notes": null,
     "quantity": "6",
     "unit": "oz",
@@ -491,7 +491,7 @@ exports[`Grocery engine — golden snapshots (15 scenarios) > scenario: 06_mixed
     "unit": "tbsp",
   },
   {
-    "name": "salmon fillet",
+    "name": "salmon",
     "notes": null,
     "quantity": "6",
     "unit": "oz",
@@ -573,7 +573,7 @@ exports[`Grocery engine — golden snapshots (15 scenarios) > scenario: 07_synon
     "unit": "tbsp",
   },
   {
-    "name": "salmon fillet",
+    "name": "salmon",
     "notes": null,
     "quantity": "6",
     "unit": "oz",
@@ -702,7 +702,7 @@ exports[`Grocery engine — golden snapshots (15 scenarios) > scenario: 10_doubl
     "unit": "cup",
   },
   {
-    "name": "salmon fillet",
+    "name": "salmon",
     "notes": null,
     "quantity": "6",
     "unit": "oz",
