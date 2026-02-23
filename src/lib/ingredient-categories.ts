@@ -286,6 +286,28 @@ export const INGREDIENT_CATEGORIES: Map<string, string> = new Map([
   ['dried cranberries', 'pantry'],
   ['raisins', 'pantry'],
   ['dried apricots', 'pantry'],
+
+  // === PRODUCE (additional) ===
+  ['orange zest', 'produce'],
+  ['orange juice', 'produce'],
+  ['navel orange', 'produce'],
+
+  // === PROTEIN (additional) ===
+  ['kidney beans', 'protein'],
+  ['salmon fillet', 'protein'],
+  ['strip steak', 'protein'],
+
+  // === PANTRY (additional) ===
+  ['truffle oil', 'pantry'],
+  ['vanilla bean paste', 'pantry'],
+  ['almond milk', 'pantry'],
+  ['pistachios', 'pantry'],
+  ['hemp seeds', 'pantry'],
+  ['rolled oats', 'pantry'],
+  ['5 grain cereal', 'pantry'],
+  ['nutmeg', 'pantry'],
+  ['ground ginger', 'pantry'],
+  ['cocoa powder', 'pantry'],
 ]);
 
 export function classifyIngredient(canonicalName: string): string {

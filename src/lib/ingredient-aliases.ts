@@ -645,5 +645,78 @@ export const INGREDIENT_ALIASES: Map<string, string> = new Map([
 
   // ── Vegetable broth (additional variants) ─────────────────────────────────
   ['vegetable stock', 'vegetable broth'],
+
+  // ── Orange (fruit variants) ────────────────────────────────────────────────
+  ['navel orange', 'orange'],
+  ['navel oranges', 'orange'],
+
+  // ── Orange zest ───────────────────────────────────────────────────────────
+  ['orange zest', 'orange zest'],
+
+  // ── Oats (additional variants) ────────────────────────────────────────────
+  ['old-fashioned rolled oats', 'rolled oats'],
+  ['old fashioned rolled oats', 'rolled oats'],
+
+  // ── Kidney beans (additional variants) ────────────────────────────────────
+  ['red kidney beans', 'kidney beans'],
+  ['cans red kidney beans', 'kidney beans'],
+
+  // ── Truffle oil ───────────────────────────────────────────────────────────
+  ['truffle oil', 'truffle oil'],
+
+  // ── Vanilla bean paste ────────────────────────────────────────────────────
+  ['vanilla bean paste', 'vanilla bean paste'],
+
+  // ── Almond milk (additional variants) ────────────────────────────────────
+  ['almond milk', 'almond milk'],
+  ['unsweetened almond milk', 'almond milk'],
+  ['vanilla almond milk', 'almond milk'],
+  ['unsweetened vanilla almond milk', 'almond milk'],
+
+  // ── Pistachios ────────────────────────────────────────────────────────────
+  ['pistachio', 'pistachios'],
+  ['pistachios', 'pistachios'],
+  ['shelled pistachios', 'pistachios'],
+
+  // ── Hemp seeds ────────────────────────────────────────────────────────────
+  ['hemp seeds', 'hemp seeds'],
+  ['hemp seed', 'hemp seeds'],
+
+  // ── Yukon potato ──────────────────────────────────────────────────────────
+  ['yukon potato', 'potato'],
+  ['yukon potatoes', 'potato'],
+  ['yukon gold potato', 'potato'],
+  ['yukon gold potatoes', 'potato'],
+
+  // ── Parsnip (plural) ──────────────────────────────────────────────────────
+  ['parsnips', 'parsnip'],
+
+  // ── Beet (color variants) ─────────────────────────────────────────────────
+  ['red beet', 'beet'],
+  ['red beets', 'beet'],
+  ['golden beet', 'beet'],
+  ['golden beets', 'beet'],
+
+  // ── Avocado (plural) ──────────────────────────────────────────────────────
+  ['avocados', 'avocado'],
+
+  // ── Salmon (additional variants) ──────────────────────────────────────────
+  ['salmon fillet', 'salmon'],
+  ['salmon fillets', 'salmon'],
+  ['skinless salmon fillet', 'salmon'],
+
+  // ── Strip steak ───────────────────────────────────────────────────────────
+  ['strip steak', 'steak'],
+  ['new york strip', 'steak'],
+  ['ny strip', 'steak'],
+
+  // ── Cocoa powder (asterisk/variant handling) ──────────────────────────────
+  ['cocoa powder*', 'cocoa powder'],
+  ['unsweetened cocoa powder', 'cocoa powder'],
+
+  // ── 5 grain / multigrain cereal ───────────────────────────────────────────
+  ['5 grain', '5 grain cereal'],
+  ['dry 5 grain', '5 grain cereal'],
+  ['5-grain', '5 grain cereal'],
 ]);
 
