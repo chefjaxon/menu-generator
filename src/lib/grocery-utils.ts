@@ -319,6 +319,19 @@ export function parseIngredientLine(line: string): ParsedIngredientLine {
     return { quantity: formatted.quantity, unit: formatted.unit || null, name: rest.trim() };
   }
 
+  // Parenthetical size: "1 (28 oz) can crushed tomatoes" → qty:"1", unit:"can", name:"28 oz can crushed tomatoes"
+  // Preserves the size info in the name rather than losing it to parenthetical stripping.
+  const parenSizeMatch = trimmed.match(
+    /^(\d+(?:[/.]\d+)?)\s+\((\d+(?:[/.]\d+)?\s*(?:oz|ounce|ounces|g|gram|grams|lb|lbs|pound|pounds|ml|l))\)\s+([a-zA-Z]+)\s+(.+)$/i
+  );
+  if (parenSizeMatch) {
+    const [, qty, size, containerUnit, ingredient] = parenSizeMatch;
+    const unitLower = containerUnit.toLowerCase();
+    if (UNITS.has(unitLower)) {
+      return { quantity: qty, unit: unitLower, name: `${size} ${unitLower} ${ingredient}`.trim() };
+    }
+  }
+
   // Standard: leading number (int, decimal, or fraction), optional unit token, rest is name
   const match = trimmed.match(
     /^(\d+(?:[/.]\d+)?(?:\s+\d+\/\d+)?)\s+([a-zA-Z]+)\s+(.+)$/
@@ -1020,6 +1033,16 @@ export function stripPreparationDescriptors(name: string): string {
  * Pure function with no side effects.
  */
 export function normalizeIngredientName(name: string): string {
+  // Priority 0: size-prefixed names like "28 oz can crushed tomatoes" — normalize only the
+  // ingredient suffix to preserve the size info while still canonicalizing the ingredient.
+  const sizePrefixMatch = name.match(
+    /^(\d+(?:[/.]\d+)?\s*(?:oz|ounce|ounces|g|gram|grams|lb|lbs|pound|pounds|ml|l)\s+\S+\s+)(.+)$/i
+  );
+  if (sizePrefixMatch) {
+    const [, prefix, rest] = sizePrefixMatch;
+    return `${prefix.trimEnd()} ${normalizeIngredientName(rest)}`.trim();
+  }
+
   // Priority 1: exact alias match on original name (identity-protection entries)
   const originalKey = name.toLowerCase().trim();
   const directMatch = INGREDIENT_ALIASES.get(originalKey);

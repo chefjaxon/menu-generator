@@ -481,7 +481,8 @@ export const INGREDIENT_ALIASES: Map<string, string> = new Map([
   ['large eggs', 'egg'],
 
   // ── Salt (additional variants) ────────────────────────────────────────────
-  ['flaky sea salt', 'salt'],
+  ['flaky sea salt', 'flaky sea salt'],
+  ['flaky salt', 'flaky sea salt'],
   ['smoked sea salt', 'salt'],
   ['salt to taste', 'salt'],
 

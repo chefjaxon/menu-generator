@@ -47,7 +47,7 @@ function pairKey(pair: DuplicatePair) {
   return `${pair.itemA.id}|${pair.itemB.id}`;
 }
 
-type OmitReason = 'bracketed' | 'no-quantity' | 'water';
+type OmitReason = 'bracketed' | 'no-quantity' | 'water' | 'seasoning';
 
 interface OmittedItem {
   item: GroceryItem;
@@ -62,6 +62,14 @@ function hasBrackets(name: string): boolean {
 function isWater(name: string): boolean {
   const n = name.toLowerCase().trim();
   return n === 'water' || n.startsWith('filtered water');
+}
+
+// Salt and pepper are pantry staples — always omit regardless of quantity.
+// Flaky sea salt is excluded (kept in list) via its own distinct canonical name.
+const ALWAYS_OMIT_SEASONINGS = new Set(['salt', 'pepper', 'salt and pepper']);
+
+function isSeasoningOmit(name: string): boolean {
+  return ALWAYS_OMIT_SEASONINGS.has(name.toLowerCase().trim());
 }
 
 export function GroceryConsolidatorClient() {
@@ -115,6 +123,8 @@ export function GroceryConsolidatorClient() {
         omitted.push({ item, reason: 'bracketed', originalName: item.name });
       } else if (isWater(item.name)) {
         omitted.push({ item, reason: 'water', originalName: item.name });
+      } else if (isSeasoningOmit(item.name)) {
+        omitted.push({ item, reason: 'seasoning', originalName: item.name });
       } else if (!item.quantity && !item.unit) {
         omitted.push({ item, reason: 'no-quantity', originalName: item.name });
       } else {
