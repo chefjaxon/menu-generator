@@ -968,9 +968,11 @@ export function consolidateExactDuplicates(items: GroceryItem[]): GroceryItem[] 
 const PREP_VERB_PATTERN =
   /\b(?:(?:thinly|finely|coarsely|roughly|freshly)\s+)?(?:sliced|chopped|minced|diced|grated|shredded|crumbled|crushed|julienned|peeled|trimmed|halved|quartered|torn|saut[eé]ed|roasted|toasted|blanched|steamed|boiled|fried|baked|grilled|smoked)\b/gi;
 
-// Freshness / state adjectives that don't change grocery identity
+// State adjectives that don't change grocery identity
+// Note: 'fresh' and 'dried' are intentionally excluded — they distinguish
+// meaningfully different ingredients (e.g. fresh vs dried herbs/produce).
 const PREP_ADJECTIVE_PATTERN =
-  /\b(?:fresh|dried|frozen|canned|raw|softened|melted|room[\s-]temperature|cold|warm|hot|cooled|thawed)\b/gi;
+  /\b(?:frozen|canned|raw|softened|melted|room[\s-]temperature|cold|warm|hot|cooled|thawed)\b/gi;
 
 /**
  * Strip preparation descriptors from an ingredient name so that variants like

@@ -327,10 +327,10 @@ describe('stripPreparationDescriptors', () => {
     expect(result.toLowerCase()).not.toContain('sliced');
   });
 
-  it('strips freshness adjective: "fresh basil" → "basil"', () => {
+  it('preserves "fresh" in "fresh basil" — fresh/dried are identity-critical for herbs', () => {
     const result = stripPreparationDescriptors('fresh basil');
     expect(result.toLowerCase()).toContain('basil');
-    expect(result.toLowerCase()).not.toContain('fresh');
+    expect(result.toLowerCase()).toContain('fresh');
   });
 
   it('strips "frozen": "frozen peas" → "peas"', () => {

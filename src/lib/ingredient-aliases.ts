@@ -194,24 +194,24 @@ export const INGREDIENT_ALIASES: Map<string, string> = new Map([
   ['cilantro', 'cilantro'],
   ['fresh cilantro', 'cilantro'],
   ['basil', 'basil'],
-  ['fresh basil', 'basil'],
+  ['fresh basil', 'fresh basil'],
   ['dried basil', 'dried basil'],
   ['thyme', 'thyme'],
-  ['fresh thyme', 'thyme'],
-  ['dried thyme', 'thyme'],
+  ['fresh thyme', 'fresh thyme'],
+  ['dried thyme', 'dried thyme'],
   ['rosemary', 'rosemary'],
-  ['fresh rosemary', 'rosemary'],
-  ['dried rosemary', 'rosemary'],
+  ['fresh rosemary', 'fresh rosemary'],
+  ['dried rosemary', 'dried rosemary'],
   ['oregano', 'oregano'],
-  ['dried oregano', 'oregano'],
-  ['fresh oregano', 'oregano'],
+  ['dried oregano', 'dried oregano'],
+  ['fresh oregano', 'fresh oregano'],
   ['bay leaf', 'bay leaf'],
   ['bay leaves', 'bay leaf'],
   ['chives', 'chives'],
   ['fresh chives', 'chives'],
   ['dill', 'dill'],
-  ['fresh dill', 'dill'],
-  ['dried dill', 'dill'],
+  ['fresh dill', 'fresh dill'],
+  ['dried dill', 'dried dill'],
 
   // ── Spices ───────────────────────────────────────────────────────────────
   ['cumin', 'cumin'],
@@ -353,27 +353,27 @@ export const INGREDIENT_ALIASES: Map<string, string> = new Map([
   ['fresh parsley leaves', 'parsley'],
 
   // ── Rosemary ─────────────────────────────────────────────────────────────
-  ['chopped fresh rosemary', 'rosemary'],
-  ['finely chopped fresh rosemary leaves', 'rosemary'],
-  ['fresh rosemary leaves', 'rosemary'],
-  ['fresh rosemary sprigs', 'rosemary'],
+  ['chopped fresh rosemary', 'fresh rosemary'],
+  ['finely chopped fresh rosemary leaves', 'fresh rosemary'],
+  ['fresh rosemary leaves', 'fresh rosemary'],
+  ['fresh rosemary sprigs', 'fresh rosemary'],
 
   // ── Oregano ──────────────────────────────────────────────────────────────
-  ['chopped oregano leaves', 'oregano'],
-  ['fresh oregano', 'oregano'],
-  ['fresh oregano leaves', 'oregano'],
+  ['chopped oregano leaves', 'fresh oregano'],
+  ['fresh oregano', 'fresh oregano'],
+  ['fresh oregano leaves', 'fresh oregano'],
 
   // ── Thyme ────────────────────────────────────────────────────────────────
-  ['chopped thyme leaves', 'thyme'],
-  ['fresh thyme leaves', 'thyme'],
+  ['chopped thyme leaves', 'fresh thyme'],
+  ['fresh thyme leaves', 'fresh thyme'],
 
   // ── Dill ─────────────────────────────────────────────────────────────────
-  ['dill - finely chopped', 'dill'],
-  ['finely chopped fresh dill', 'dill'],
-  ['fresh dill fronds', 'dill'],
+  ['dill - finely chopped', 'fresh dill'],
+  ['finely chopped fresh dill', 'fresh dill'],
+  ['fresh dill fronds', 'fresh dill'],
 
   // ── Basil ────────────────────────────────────────────────────────────────
-  ['fresh basil leaves', 'basil'],
+  ['fresh basil leaves', 'fresh basil'],
 
   // ── Chives ───────────────────────────────────────────────────────────────
   ['fresh chives', 'chives'],
@@ -714,10 +714,12 @@ export const INGREDIENT_ALIASES: Map<string, string> = new Map([
   ['cocoa powder*', 'cocoa powder'],
   ['unsweetened cocoa powder', 'cocoa powder'],
 
-  // ── 5 grain / multigrain cereal ───────────────────────────────────────────
-  ['5 grain', '5 grain cereal'],
-  ['dry 5 grain', '5 grain cereal'],
-  ['5-grain', '5 grain cereal'],
+  // ── 5 grain / multigrain ──────────────────────────────────────────────────
+  ['5 grain', '5 grain'],
+  ['dry 5 grain', '5 grain'],
+  ['5-grain', '5 grain'],
+  ['five grain', '5 grain'],
+  ['dry five grain', '5 grain'],
 
   // ── Water ─────────────────────────────────────────────────────────────────
   ['water', 'water'],
