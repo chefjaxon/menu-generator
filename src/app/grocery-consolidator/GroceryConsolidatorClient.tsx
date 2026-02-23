@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ClipboardList, Copy, Check, X } from 'lucide-react';
 import {
   parsePastedText,
@@ -47,16 +47,21 @@ function pairKey(pair: DuplicatePair) {
   return `${pair.itemA.id}|${pair.itemB.id}`;
 }
 
-type OmitReason = 'bracketed' | 'no-quantity';
+type OmitReason = 'bracketed' | 'no-quantity' | 'water';
 
 interface OmittedItem {
   item: GroceryItem;
   reason: OmitReason;
-  originalName: string; // name before bracket stripping
+  originalName: string;
 }
 
 function hasBrackets(name: string): boolean {
   return /\[/.test(name);
+}
+
+function isWater(name: string): boolean {
+  const n = name.toLowerCase().trim();
+  return n === 'water' || n.startsWith('filtered water');
 }
 
 export function GroceryConsolidatorClient() {
@@ -67,6 +72,19 @@ export function GroceryConsolidatorClient() {
   const [originalCount, setOriginalCount] = useState(0);
   const [dismissedPairKeys, setDismissedPairKeys] = useState<Set<string>>(new Set());
   const [copied, setCopied] = useState(false);
+  const [categoryOverrides, setCategoryOverrides] = useState<Record<string, string>>({});
+
+  // Load DB-backed category overrides on mount so all consolidations benefit
+  useEffect(() => {
+    fetch('/api/grocery-consolidator/category-override')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && typeof data === 'object' && !data.error) {
+          setCategoryOverrides(data as Record<string, string>);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   function handleConsolidate() {
     if (!inputText.trim()) return;
@@ -80,10 +98,13 @@ export function GroceryConsolidatorClient() {
 
     groceryItems = normalizeIngredientNames(groceryItems);
     groceryItems = consolidateExactDuplicates(groceryItems);
-    groceryItems = groceryItems.map((item) => ({
-      ...item,
-      category: classifyIngredient(item.name),
-    }));
+
+    // Classify: DB overrides win over static table
+    groceryItems = groceryItems.map((item) => {
+      const key = item.name.toLowerCase().trim();
+      const category = categoryOverrides[key] ?? classifyIngredient(item.name);
+      return { ...item, category };
+    });
 
     // Separate out omitted items
     const kept: GroceryItem[] = [];
@@ -92,6 +113,8 @@ export function GroceryConsolidatorClient() {
     for (const item of groceryItems) {
       if (hasBrackets(item.name)) {
         omitted.push({ item, reason: 'bracketed', originalName: item.name });
+      } else if (isWater(item.name)) {
+        omitted.push({ item, reason: 'water', originalName: item.name });
       } else if (!item.quantity && !item.unit) {
         omitted.push({ item, reason: 'no-quantity', originalName: item.name });
       } else {
@@ -114,6 +137,27 @@ export function GroceryConsolidatorClient() {
 
   function handleDismiss(pair: DuplicatePair) {
     setDismissedPairKeys((prev) => new Set([...prev, pairKey(pair)]));
+  }
+
+  function handleCategoryChange(itemId: string, newCategory: string) {
+    const item = items?.find((it) => it.id === itemId);
+    if (!item) return;
+
+    // Update local state immediately (optimistic)
+    setItems((prev) =>
+      prev ? prev.map((it) => (it.id === itemId ? { ...it, category: newCategory } : it)) : prev
+    );
+
+    // Update in-memory overrides so re-consolidation applies it right away
+    const key = item.name.toLowerCase().trim();
+    setCategoryOverrides((prev) => ({ ...prev, [key]: newCategory }));
+
+    // Persist to DB — teaches the system for all future runs on any browser (fire and forget)
+    fetch('/api/grocery-consolidator/category-override', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ingredientName: item.name, category: newCategory }),
+    }).catch(() => {});
   }
 
   function handleCopy() {
@@ -279,7 +323,11 @@ export function GroceryConsolidatorClient() {
                           {o.originalName}
                         </td>
                         <td className="py-2 px-3 text-xs text-muted-foreground">
-                          {o.reason === 'bracketed' ? 'Has [ ] brackets' : 'No measurement'}
+                          {o.reason === 'bracketed'
+                            ? 'Has [ ] brackets'
+                            : o.reason === 'water'
+                            ? 'Water'
+                            : 'No measurement'}
                         </td>
                         <td className="py-2 px-3 text-center">
                           <button
@@ -313,8 +361,9 @@ export function GroceryConsolidatorClient() {
                       <thead>
                         <tr className="bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground">
                           <th className="py-2 px-3 text-left">Name</th>
-                          <th className="py-2 px-3 text-center w-24">Qty</th>
-                          <th className="py-2 px-3 text-center w-20">Unit</th>
+                          <th className="py-2 px-3 text-center w-20">Qty</th>
+                          <th className="py-2 px-3 text-center w-16">Unit</th>
+                          <th className="py-2 px-3 text-left w-36">Category</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -326,6 +375,19 @@ export function GroceryConsolidatorClient() {
                             </td>
                             <td className="py-2 px-3 text-sm text-center">
                               {item.unit ?? '—'}
+                            </td>
+                            <td className="py-2 px-3">
+                              <select
+                                value={item.category}
+                                onChange={(e) => handleCategoryChange(item.id, e.target.value)}
+                                className="w-full text-xs rounded border border-border bg-background px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
+                              >
+                                {CATEGORY_ORDER.map((c) => (
+                                  <option key={c} value={c}>
+                                    {CATEGORY_LABELS[c]}
+                                  </option>
+                                ))}
+                              </select>
                             </td>
                           </tr>
                         ))}

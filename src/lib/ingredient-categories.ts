@@ -297,6 +297,9 @@ export const INGREDIENT_CATEGORIES: Map<string, string> = new Map([
   ['salmon fillet', 'protein'],
   ['strip steak', 'protein'],
 
+  // === OTHER (water — will be auto-omitted by isWater check) ===
+  ['water', 'other'],
+
   // === PANTRY (additional) ===
   ['truffle oil', 'pantry'],
   ['vanilla bean paste', 'pantry'],

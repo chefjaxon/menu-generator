@@ -327,3 +327,12 @@ model IngredientNormCache {
   @@unique([keyA, keyB])
   @@map("ingredient_norm_cache")
 }
+
+model CategoryOverride {
+  id             String   @id @default(cuid())
+  ingredientName String   @unique @map("ingredient_name") // canonical (lowercased, trimmed) name
+  category       String   // 'produce' | 'protein' | 'dairy' | 'pantry' | 'other'
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("category_overrides")
+}

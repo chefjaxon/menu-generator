@@ -718,5 +718,13 @@ export const INGREDIENT_ALIASES: Map<string, string> = new Map([
   ['5 grain', '5 grain cereal'],
   ['dry 5 grain', '5 grain cereal'],
   ['5-grain', '5 grain cereal'],
+
+  // ── Water ─────────────────────────────────────────────────────────────────
+  ['water', 'water'],
+  ['filtered water', 'water'],
+  ['filtered water (plus more as needed)', 'water'],
+  ['filtered water (plus more as needed for consistency)', 'water'],
+  ['cold water', 'water'],
+  ['warm water', 'water'],
 ]);
 
