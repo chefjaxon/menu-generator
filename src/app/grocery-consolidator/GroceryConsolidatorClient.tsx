@@ -6,9 +6,9 @@ import {
   parsePastedText,
   normalizeIngredientNames,
   consolidateExactDuplicates,
-} from '@/lib/grocery-utils';
+  classifyIngredient,
+} from '@/lib/grocery-utils-client';
 import { findDuplicatePairs } from '@/lib/grocery-similarity';
-import { classifyIngredient } from '@/lib/ingredient-categories';
 import type { GroceryItem, DuplicatePair } from '@/lib/types';
 
 const CATEGORY_ORDER = ['produce', 'protein', 'dairy', 'pantry', 'other'] as const;
