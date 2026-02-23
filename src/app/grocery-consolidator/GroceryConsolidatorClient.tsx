@@ -118,10 +118,17 @@ export function GroceryConsolidatorClient() {
 
   function handleCopy() {
     if (!items) return;
-    const lines = items.map((item) =>
-      [item.quantity, item.unit, item.name].filter(Boolean).join(' ')
-    );
-    navigator.clipboard.writeText(lines.join('\n'));
+    const blocks: string[] = [];
+    for (const cat of CATEGORY_ORDER) {
+      const catItems = items.filter((it) => it.category === cat);
+      if (catItems.length === 0) continue;
+      const heading = CATEGORY_LABELS[cat].toUpperCase();
+      const rows = catItems.map((item) =>
+        [item.quantity, item.unit, item.name].filter(Boolean).join(' ')
+      );
+      blocks.push([heading, ...rows].join('\n'));
+    }
+    navigator.clipboard.writeText(blocks.join('\n\n'));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
