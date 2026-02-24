@@ -84,14 +84,13 @@ function convertCitrusJuiceToCount(item: GroceryItem): GroceryItem {
   let totalTsp: number | null = null;
   const unitLower = (item.unit ?? '').toLowerCase().trim();
 
-  if (unitLower === 'tbsp' || unitLower === 'tablespoon' || unitLower === 'tablespoons') {
+  const unitInfo = unitLower ? UNIT_TABLE[unitLower] : null;
+  if (unitInfo && unitInfo.group === 'volume') {
+    // Any recognized volume unit (tbsp, tsp, cup, etc.) — convert to tsp via UNIT_TABLE
     const qty = item.quantity ? parseQuantity(item.quantity) : null;
-    if (qty !== null) totalTsp = qty * 3;
-  } else if (unitLower === 'tsp' || unitLower === 'teaspoon' || unitLower === 'teaspoons') {
-    const qty = item.quantity ? parseQuantity(item.quantity) : null;
-    if (qty !== null) totalTsp = qty;
+    if (qty !== null) totalTsp = qty * unitInfo.toBase;
   } else if (!unitLower && item.quantity) {
-    // Multi-part volume string e.g. "1 tbsp + 2 tsp" stored in quantity with empty unit
+    // Multi-part volume string e.g. "1 cup + 2 tbsp" or "1 tbsp + 2 tsp" with empty unit
     totalTsp = parseMultiPartVolumeTsp(item.quantity);
   }
 
