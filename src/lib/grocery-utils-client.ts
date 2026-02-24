@@ -581,10 +581,9 @@ export function convertCitrusJuiceToCount(item: GroceryItem): GroceryItem {
 
   const count = totalTsp / 6;
   const countFormatted = formatQuantity(count);
-  const pluralUnit = count === 1 ? citrus : citrus + 's';
   const newNotes = item.notes ? `${item.notes}; juiced` : 'juiced';
 
-  return { ...item, quantity: countFormatted, unit: pluralUnit, notes: newNotes };
+  return { ...item, name: citrus + 's', quantity: countFormatted, unit: null, notes: newNotes };
 }
 
 // ── Re-export classifyIngredient for convenience ──────────────────────────────

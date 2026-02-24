@@ -99,16 +99,13 @@ function convertCitrusJuiceToCount(item: GroceryItem): GroceryItem {
   // 1 citrus = 6 tsp of juice
   const count = totalTsp / 6;
   const countFormatted = formatQuantity(count);
-  const pluralUnit = count === 1 ? citrus : citrus + 's';
-  const juicedNote = 'juiced';
-  const newNotes = item.notes
-    ? `${item.notes}; ${juicedNote}`
-    : juicedNote;
+  const newNotes = item.notes ? `${item.notes}; juiced` : 'juiced';
 
   return {
     ...item,
+    name: citrus + 's',   // "lemons" or "limes"
     quantity: countFormatted,
-    unit: pluralUnit,
+    unit: null,
     notes: newNotes,
   };
 }
