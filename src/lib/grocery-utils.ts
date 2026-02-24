@@ -66,6 +66,55 @@ export interface BuildGroceryResult {
 }
 
 /**
+ * Convert a lemon juice or lime juice item measured in tbsp/tsp into a citrus count.
+ * e.g. "2 tbsp lemon juice" → quantity: "1", unit: "lemon", notes: "juiced"
+ *       "3 tbsp lime juice"  → quantity: "1½", unit: "limes", notes: "juiced"
+ *
+ * Ratio: 1 lemon/lime ≈ 2 tbsp = 6 tsp of juice.
+ * Does NOT affect lemon zest, lime zest, or any other citrus item.
+ */
+function convertCitrusJuiceToCount(item: GroceryItem): GroceryItem {
+  const nameLower = item.name.toLowerCase().trim();
+  // Only match exactly "lemon juice" or "lime juice" — not zest, pepper, etc.
+  if (nameLower !== 'lemon juice' && nameLower !== 'lime juice') return item;
+
+  const citrus = nameLower === 'lemon juice' ? 'lemon' : 'lime';
+
+  // Resolve total tsp from quantity + unit
+  let totalTsp: number | null = null;
+  const unitLower = (item.unit ?? '').toLowerCase().trim();
+
+  if (unitLower === 'tbsp' || unitLower === 'tablespoon' || unitLower === 'tablespoons') {
+    const qty = item.quantity ? parseQuantity(item.quantity) : null;
+    if (qty !== null) totalTsp = qty * 3;
+  } else if (unitLower === 'tsp' || unitLower === 'teaspoon' || unitLower === 'teaspoons') {
+    const qty = item.quantity ? parseQuantity(item.quantity) : null;
+    if (qty !== null) totalTsp = qty;
+  } else if (!unitLower && item.quantity) {
+    // Multi-part volume string e.g. "1 tbsp + 2 tsp" stored in quantity with empty unit
+    totalTsp = parseMultiPartVolumeTsp(item.quantity);
+  }
+
+  if (totalTsp === null || totalTsp <= 0) return item;
+
+  // 1 citrus = 6 tsp of juice
+  const count = totalTsp / 6;
+  const countFormatted = formatQuantity(count);
+  const pluralUnit = count === 1 ? citrus : citrus + 's';
+  const juicedNote = 'juiced';
+  const newNotes = item.notes
+    ? `${item.notes}; ${juicedNote}`
+    : juicedNote;
+
+  return {
+    ...item,
+    quantity: countFormatted,
+    unit: pluralUnit,
+    notes: newNotes,
+  };
+}
+
+/**
  * Pure grocery list builder. Takes all data as arguments, performs no IO and no DB calls.
  * Used by both the production IO wrapper (generateGroceryItemsFromMenu) and by tests.
  *
@@ -236,7 +285,7 @@ export function buildGroceryFromData(
   }
 
   // Step 3: Consolidate exact duplicates among kept items
-  const toKeep = consolidateExactDuplicates(toKeepRaw);
+  const toKeep = consolidateExactDuplicates(toKeepRaw).map(convertCitrusJuiceToCount);
 
   // Step 4: Deduplicate removed items by canonical name
   const removedByName = new Map<string, GroceryItem>();
@@ -604,23 +653,7 @@ function formatVolume(totalTsp: number): { quantity: string; unit: string } {
     }
     return { quantity: `${formatQuantity(wholeTbsp)} tbsp + ${remFormatted} tsp`, unit: '' };
   } else if (totalTsp < 192 - 0.01) {
-    // Cup tier — but only if totalTsp is at least ¼ cup (12 tsp)
-    // Values between 12 and 48 that aren't clean cup fractions stay in tbsp tier
-    if (totalTsp < 48 - 0.01) {
-      // Try as clean cup fraction (¼, ⅓, ½, ⅔, ¾) — tight tolerance
-      const cupFrac = totalTsp / 48;
-      const formatted = formatQuantity(cupFrac);
-      const reparsed = parseQuantityFromFormatted(formatted);
-      if (reparsed !== null && reparsed > 0 && Math.abs(reparsed - cupFrac) < 0.015) {
-        return { quantity: formatted, unit: 'cup' };
-      }
-      // Not a clean cup fraction — fall back to tbsp + tsp
-      const tbspQty = totalTsp / 3;
-      const wholeTbsp = Math.floor(tbspQty + 0.01);
-      const remTsp = Math.round((totalTsp - wholeTbsp * 3) * 1000) / 1000;
-      if (remTsp < 0.1) return { quantity: formatQuantity(wholeTbsp), unit: 'tbsp' };
-      return { quantity: `${formatQuantity(wholeTbsp)} tbsp + ${formatQuantity(remTsp)} tsp`, unit: '' };
-    }
+    // Cup tier — 4+ tbsp (12+ tsp) always expressed in cups
     primaryUnit = 'cup'; primaryTsp = 48;
     secondaryUnit = 'tbsp'; secondaryTsp = 3;
   } else if (totalTsp < 768 - 0.01) {

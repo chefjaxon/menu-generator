@@ -318,19 +318,7 @@ function formatVolume(totalTsp: number): { quantity: string; unit: string } {
     }
     return { quantity: `${formatQuantity(wholeTbsp)} tbsp + ${remFormatted} tsp`, unit: '' };
   } else if (totalTsp < 192 - 0.01) {
-    if (totalTsp < 48 - 0.01) {
-      const cupFrac = totalTsp / 48;
-      const formatted = formatQuantity(cupFrac);
-      const reparsed = parseQuantityFromFormatted(formatted);
-      if (reparsed !== null && reparsed > 0 && Math.abs(reparsed - cupFrac) < 0.015) {
-        return { quantity: formatted, unit: 'cup' };
-      }
-      const tbspQty = totalTsp / 3;
-      const wholeTbsp = Math.floor(tbspQty + 0.01);
-      const remTsp = Math.round((totalTsp - wholeTbsp * 3) * 1000) / 1000;
-      if (remTsp < 0.1) return { quantity: formatQuantity(wholeTbsp), unit: 'tbsp' };
-      return { quantity: `${formatQuantity(wholeTbsp)} tbsp + ${formatQuantity(remTsp)} tsp`, unit: '' };
-    }
+    // 4+ tbsp (12+ tsp) always expressed in cups
     return formatPrimarySecondary(totalTsp, 'cup', 48, 'tbsp', 3);
   } else if (totalTsp < 768 - 0.01) {
     return formatPrimarySecondary(totalTsp, 'quart', 192, 'cup', 48);
