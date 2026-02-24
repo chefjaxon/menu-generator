@@ -553,6 +553,40 @@ export function normalizeIngredientNames(items: GroceryItem[]): GroceryItem[] {
   }));
 }
 
+// ── Citrus juice → count conversion ──────────────────────────────────────────
+
+/**
+ * Convert a lemon juice or lime juice item measured in any volume unit into a
+ * citrus count. 1 lemon/lime ≈ 2 tbsp = 6 tsp of juice.
+ * Does NOT affect lemon zest, lime zest, or any other citrus item.
+ */
+export function convertCitrusJuiceToCount(item: GroceryItem): GroceryItem {
+  const nameLower = item.name.toLowerCase().trim();
+  if (nameLower !== 'lemon juice' && nameLower !== 'lime juice') return item;
+
+  const citrus = nameLower === 'lemon juice' ? 'lemon' : 'lime';
+
+  let totalTsp: number | null = null;
+  const unitLower = (item.unit ?? '').toLowerCase().trim();
+  const unitInfo = unitLower ? UNIT_TABLE[unitLower] : null;
+
+  if (unitInfo && unitInfo.group === 'volume') {
+    const qty = item.quantity ? parseQuantity(item.quantity) : null;
+    if (qty !== null) totalTsp = qty * unitInfo.toBase;
+  } else if (!unitLower && item.quantity) {
+    totalTsp = parseMultiPartVolumeTsp(item.quantity);
+  }
+
+  if (totalTsp === null || totalTsp <= 0) return item;
+
+  const count = totalTsp / 6;
+  const countFormatted = formatQuantity(count);
+  const pluralUnit = count === 1 ? citrus : citrus + 's';
+  const newNotes = item.notes ? `${item.notes}; juiced` : 'juiced';
+
+  return { ...item, quantity: countFormatted, unit: pluralUnit, notes: newNotes };
+}
+
 // ── Re-export classifyIngredient for convenience ──────────────────────────────
 
 export { classifyIngredient };

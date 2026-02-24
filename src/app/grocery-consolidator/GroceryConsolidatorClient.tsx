@@ -6,6 +6,7 @@ import {
   parsePastedText,
   normalizeIngredientNames,
   consolidateExactDuplicates,
+  convertCitrusJuiceToCount,
   classifyIngredient,
 } from '@/lib/grocery-utils-client';
 import { findDuplicatePairs } from '@/lib/grocery-similarity';
@@ -184,7 +185,7 @@ export function GroceryConsolidatorClient() {
     );
 
     groceryItems = normalizeIngredientNames(groceryItems);
-    groceryItems = consolidateExactDuplicates(groceryItems);
+    groceryItems = consolidateExactDuplicates(groceryItems).map(convertCitrusJuiceToCount);
 
     groceryItems = groceryItems.map((item) => {
       const key = item.name.toLowerCase().trim();
