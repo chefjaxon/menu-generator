@@ -127,6 +127,14 @@ export function GroceryConsolidatorClient() {
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
   const [editingValue, setEditingValue] = useState('');
 
+  // Add new item form
+  const [addingItem, setAddingItem] = useState(false);
+  const [newItemName, setNewItemName] = useState('');
+  const [newItemQty, setNewItemQty] = useState('');
+  const [newItemUnit, setNewItemUnit] = useState('');
+  const [newItemCategory, setNewItemCategory] = useState('other');
+  const newItemNameRef = useRef<HTMLInputElement>(null);
+
   // Effective built-in list: factory defaults overridden by any user renames
   const effectiveBuiltins = BUILTIN_CATEGORIES.map((cat) => {
     const ov = builtinOverrides[cat.slug];
@@ -215,6 +223,7 @@ export function GroceryConsolidatorClient() {
     setDuplicatePairs(findDuplicatePairs(kept));
     setDismissedPairKeys(new Set());
     setEditingCell(null);
+    setAddingItem(false);
   }
 
   function handleAddOmitted(omitted: OmittedItem) {
@@ -423,6 +432,30 @@ export function GroceryConsolidatorClient() {
   function cancelCellEdit() {
     setEditingCell(null);
     setEditingValue('');
+  }
+
+  function handleDeleteItem(itemId: string) {
+    setItems((prev) => prev ? prev.filter((it) => it.id !== itemId) : prev);
+  }
+
+  function handleAddItem() {
+    const name = newItemName.trim();
+    if (!name) return;
+    const qty = newItemQty.trim() || null;
+    const unit = newItemUnit.trim() || null;
+    const newItem = makeStubItem(name, qty, unit, (items?.length ?? 0));
+    newItem.category = newItemCategory;
+    setItems((prev) => prev ? [...prev, newItem] : [newItem]);
+    setNewItemName('');
+    setNewItemQty('');
+    setNewItemUnit('');
+    setNewItemCategory('other');
+    setAddingItem(false);
+  }
+
+  function handleAddItemKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter') { e.preventDefault(); handleAddItem(); }
+    if (e.key === 'Escape') { e.preventDefault(); setAddingItem(false); }
   }
 
   function handleCellKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -765,7 +798,7 @@ export function GroceryConsolidatorClient() {
                 if (catItems.length === 0) return null;
                 return (
                   <div key={cat.slug} className="border border-border rounded-lg overflow-hidden">
-                    <div className="bg-muted/70 px-4 py-2 border-b border-border">
+                    <div className="bg-muted/70 px-4 py-2 border-b border-border flex items-center justify-between">
                       <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                         {cat.label} ({catItems.length})
                       </h3>
@@ -777,11 +810,12 @@ export function GroceryConsolidatorClient() {
                           <th className="py-2 px-3 text-center w-20">Qty</th>
                           <th className="py-2 px-3 text-center w-16">Unit</th>
                           <th className="py-2 px-3 text-left w-36">Category</th>
+                          <th className="py-2 px-3 w-10"></th>
                         </tr>
                       </thead>
                       <tbody>
                         {catItems.map((item) => (
-                          <tr key={item.id} className="border-b border-border last:border-0 hover:bg-muted/20">
+                          <tr key={item.id} className="border-b border-border last:border-0 hover:bg-muted/20 group/row">
                             {renderEditableCell(item, 'name', item.name, 'text-left')}
                             {renderEditableCell(item, 'quantity', item.quantity, 'text-center w-20')}
                             {renderEditableCell(item, 'unit', item.unit, 'text-center w-16')}
@@ -796,6 +830,15 @@ export function GroceryConsolidatorClient() {
                                 ))}
                               </select>
                             </td>
+                            <td className="py-2 px-2 w-10 text-center">
+                              <button
+                                onClick={() => handleDeleteItem(item.id)}
+                                className="opacity-0 group-hover/row:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                                title="Remove item"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -804,6 +847,74 @@ export function GroceryConsolidatorClient() {
                 );
               })}
             </div>
+
+            {/* Add new item */}
+            {addingItem ? (
+              <div className="border border-border rounded-lg p-3 space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">Add ingredient</p>
+                <div className="flex gap-2 flex-wrap">
+                  <input
+                    ref={newItemNameRef}
+                    autoFocus
+                    type="text"
+                    value={newItemName}
+                    onChange={(e) => setNewItemName(e.target.value)}
+                    onKeyDown={handleAddItemKeyDown}
+                    placeholder="Name"
+                    className="flex-1 min-w-32 text-sm rounded border border-border bg-background px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                  <input
+                    type="text"
+                    value={newItemQty}
+                    onChange={(e) => setNewItemQty(e.target.value)}
+                    onKeyDown={handleAddItemKeyDown}
+                    placeholder="Qty"
+                    className="w-20 text-sm rounded border border-border bg-background px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                  <input
+                    type="text"
+                    value={newItemUnit}
+                    onChange={(e) => setNewItemUnit(e.target.value)}
+                    onKeyDown={handleAddItemKeyDown}
+                    placeholder="Unit"
+                    className="w-20 text-sm rounded border border-border bg-background px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                  <select
+                    value={newItemCategory}
+                    onChange={(e) => setNewItemCategory(e.target.value)}
+                    className="text-sm rounded border border-border bg-background px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
+                  >
+                    {allCategories.map((c) => (
+                      <option key={c.slug} value={c.slug}>{c.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleAddItem}
+                    disabled={!newItemName.trim()}
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Add
+                  </button>
+                  <button
+                    onClick={() => setAddingItem(false)}
+                    className="px-3 py-1.5 text-xs border border-border rounded hover:bg-muted transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setAddingItem(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-dashed border-border rounded-md hover:bg-muted hover:border-border/80 transition-colors text-muted-foreground hover:text-foreground w-full justify-center"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add ingredient
+              </button>
+            )}
           </div>
         )}
       </div>
