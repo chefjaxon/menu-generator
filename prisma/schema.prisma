@@ -346,3 +346,12 @@ model GroceryCategory {
 
   @@map("grocery_categories")
 }
+
+model BuiltinCategoryOverride {
+  originalSlug String   @id @map("original_slug")   // factory slug: 'produce' | 'protein' | 'dairy' | 'pantry' | 'other'
+  currentSlug  String   @unique @map("current_slug") // user's renamed slug (may equal originalSlug)
+  label        String                                // user's display label
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("builtin_category_overrides")
+}

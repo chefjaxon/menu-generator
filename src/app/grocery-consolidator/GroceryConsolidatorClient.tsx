@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { ClipboardList, Copy, Check, X, Plus, Trash2, Tag } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { ClipboardList, Copy, Check, X, Plus, Trash2, Tag, Pencil } from 'lucide-react';
 import {
   parsePastedText,
   normalizeIngredientNames,
@@ -11,7 +11,7 @@ import {
 import { findDuplicatePairs } from '@/lib/grocery-similarity';
 import type { GroceryItem, DuplicatePair } from '@/lib/types';
 
-// Built-in categories that can never be deleted
+// Factory built-in categories — slugs never change on the server; only labels/current slugs are overridable
 const BUILTIN_CATEGORIES = [
   { slug: 'produce', label: 'Produce' },
   { slug: 'protein', label: 'Proteins & Meat' },
@@ -20,10 +20,17 @@ const BUILTIN_CATEGORIES = [
   { slug: 'other', label: 'Other' },
 ] as const;
 
+type FactorySlug = (typeof BUILTIN_CATEGORIES)[number]['slug'];
+
 interface CustomCategory {
   slug: string;
   label: string;
   sortOrder: number;
+}
+
+interface BuiltinOverride {
+  currentSlug: string;
+  label: string;
 }
 
 function makeStubItem(
@@ -70,7 +77,6 @@ function isWater(name: string): boolean {
   return n === 'water' || n.startsWith('filtered water');
 }
 
-// Salt and pepper are pantry staples — always omit regardless of quantity.
 const ALWAYS_OMIT_SEASONINGS = new Set(['salt', 'pepper', 'salt and pepper']);
 
 function isSeasoningOmit(name: string): boolean {
@@ -83,6 +89,13 @@ interface DeleteConfirm {
   reassignTo: string;
 }
 
+type EditableItemField = 'name' | 'quantity' | 'unit';
+
+interface EditingCell {
+  itemId: string;
+  field: EditableItemField;
+}
+
 export function GroceryConsolidatorClient() {
   const [inputText, setInputText] = useState('');
   const [items, setItems] = useState<GroceryItem[] | null>(null);
@@ -93,7 +106,7 @@ export function GroceryConsolidatorClient() {
   const [copied, setCopied] = useState(false);
   const [categoryOverrides, setCategoryOverrides] = useState<Record<string, string>>({});
 
-  // Custom categories
+  // Custom categories (user-created)
   const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
   const [newCategoryLabel, setNewCategoryLabel] = useState('');
   const [addingCategory, setAddingCategory] = useState(false);
@@ -102,13 +115,30 @@ export function GroceryConsolidatorClient() {
   const [deletingSlug, setDeletingSlug] = useState<string | null>(null);
   const newCategoryInputRef = useRef<HTMLInputElement>(null);
 
-  // All categories merged: builtins first, then custom
+  // Built-in category overrides (renamed built-ins)
+  // Key = factory slug ('produce', 'protein', etc.), value = { currentSlug, label }
+  const [builtinOverrides, setBuiltinOverrides] = useState<Record<string, BuiltinOverride>>({});
+  const [editingBuiltinSlug, setEditingBuiltinSlug] = useState<FactorySlug | null>(null);
+  const [editingBuiltinValue, setEditingBuiltinValue] = useState('');
+  const builtinInputRef = useRef<HTMLInputElement>(null);
+
+  // Inline item cell editing
+  const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
+  const [editingValue, setEditingValue] = useState('');
+
+  // Effective built-in list: factory defaults overridden by any user renames
+  const effectiveBuiltins = BUILTIN_CATEGORIES.map((cat) => {
+    const ov = builtinOverrides[cat.slug];
+    return ov ? { slug: ov.currentSlug, label: ov.label } : { slug: cat.slug as string, label: cat.label as string };
+  });
+
+  // All categories: effective built-ins first, then user-created custom categories
   const allCategories = [
-    ...BUILTIN_CATEGORIES,
+    ...effectiveBuiltins,
     ...customCategories.map((c) => ({ slug: c.slug, label: c.label })),
   ];
 
-  // Load DB-backed category overrides and custom categories on mount
+  // Load everything on mount
   useEffect(() => {
     fetch('/api/grocery-consolidator/category-override')
       .then((r) => r.json())
@@ -122,12 +152,26 @@ export function GroceryConsolidatorClient() {
     fetch('/api/grocery-consolidator/categories')
       .then((r) => r.json())
       .then((data) => {
-        if (Array.isArray(data)) {
-          setCustomCategories(data as CustomCategory[]);
+        if (Array.isArray(data)) setCustomCategories(data as CustomCategory[]);
+      })
+      .catch(() => {});
+
+    fetch('/api/grocery-consolidator/categories/builtin')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && typeof data === 'object' && !data.error) {
+          setBuiltinOverrides(data as Record<string, BuiltinOverride>);
         }
       })
       .catch(() => {});
   }, []);
+
+  // Focus builtin input when edit mode opens
+  useEffect(() => {
+    if (editingBuiltinSlug) {
+      setTimeout(() => builtinInputRef.current?.focus(), 0);
+    }
+  }, [editingBuiltinSlug]);
 
   function handleConsolidate() {
     if (!inputText.trim()) return;
@@ -142,14 +186,12 @@ export function GroceryConsolidatorClient() {
     groceryItems = normalizeIngredientNames(groceryItems);
     groceryItems = consolidateExactDuplicates(groceryItems);
 
-    // Classify: DB overrides win over static table
     groceryItems = groceryItems.map((item) => {
       const key = item.name.toLowerCase().trim();
       const category = categoryOverrides[key] ?? classifyIngredient(item.name);
       return { ...item, category };
     });
 
-    // Separate out omitted items
     const kept: GroceryItem[] = [];
     const omitted: OmittedItem[] = [];
 
@@ -167,12 +209,11 @@ export function GroceryConsolidatorClient() {
       }
     }
 
-    const pairs = findDuplicatePairs(kept);
-
     setItems(kept);
     setOmittedItems(omitted);
-    setDuplicatePairs(pairs);
+    setDuplicatePairs(findDuplicatePairs(kept));
     setDismissedPairKeys(new Set());
+    setEditingCell(null);
   }
 
   function handleAddOmitted(omitted: OmittedItem) {
@@ -219,6 +260,8 @@ export function GroceryConsolidatorClient() {
     setTimeout(() => setCopied(false), 2000);
   }
 
+  // ─── Custom category management ───────────────────────────────────────────
+
   async function handleAddCategory() {
     const label = newCategoryLabel.trim();
     if (!label) return;
@@ -232,7 +275,6 @@ export function GroceryConsolidatorClient() {
       if (res.ok) {
         const created = await res.json();
         setCustomCategories((prev) => {
-          // Avoid duplicates (upsert by slug)
           const without = prev.filter((c) => c.slug !== created.slug);
           return [...without, created];
         });
@@ -245,7 +287,6 @@ export function GroceryConsolidatorClient() {
   }
 
   function handleDeleteClick(cat: CustomCategory) {
-    // Default reassign to 'other'
     setDeleteConfirm({ slug: cat.slug, label: cat.label, reassignTo: 'other' });
   }
 
@@ -261,7 +302,6 @@ export function GroceryConsolidatorClient() {
       });
       if (res.ok) {
         setCustomCategories((prev) => prev.filter((c) => c.slug !== slug));
-        // Remap any in-memory overrides from deleted slug → reassignTo
         setCategoryOverrides((prev) => {
           const updated: Record<string, string> = {};
           for (const [k, v] of Object.entries(prev)) {
@@ -269,7 +309,6 @@ export function GroceryConsolidatorClient() {
           }
           return updated;
         });
-        // Remap any currently displayed items
         setItems((prev) =>
           prev
             ? prev.map((it) => (it.category === slug ? { ...it, category: reassignTo } : it))
@@ -282,7 +321,152 @@ export function GroceryConsolidatorClient() {
     }
   }
 
+  // ─── Built-in category rename ──────────────────────────────────────────────
+
+  function startEditBuiltin(factorySlug: FactorySlug) {
+    const ov = builtinOverrides[factorySlug];
+    const currentLabel = ov?.label ?? BUILTIN_CATEGORIES.find((c) => c.slug === factorySlug)?.label ?? '';
+    setEditingBuiltinSlug(factorySlug);
+    setEditingBuiltinValue(currentLabel);
+  }
+
+  async function commitBuiltinRename() {
+    const originalSlug = editingBuiltinSlug;
+    const newLabel = editingBuiltinValue.trim();
+    setEditingBuiltinSlug(null);
+    setEditingBuiltinValue('');
+
+    if (!originalSlug || !newLabel) return;
+
+    // Derive old effective slug to remap items/overrides in memory
+    const oldSlug = builtinOverrides[originalSlug]?.currentSlug ?? originalSlug;
+
+    const res = await fetch('/api/grocery-consolidator/categories/builtin', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ originalSlug, newLabel }),
+    });
+    if (!res.ok) return;
+
+    const result = await res.json() as { originalSlug: string; currentSlug: string; label: string };
+    const newSlug = result.currentSlug;
+
+    setBuiltinOverrides((prev) => ({
+      ...prev,
+      [result.originalSlug]: { currentSlug: newSlug, label: result.label },
+    }));
+
+    // Remap in-memory category overrides
+    setCategoryOverrides((prev) => {
+      const updated: Record<string, string> = {};
+      for (const [k, v] of Object.entries(prev)) {
+        updated[k] = v === oldSlug ? newSlug : v;
+      }
+      return updated;
+    });
+
+    // Remap any currently displayed items
+    setItems((prev) =>
+      prev
+        ? prev.map((it) => (it.category === oldSlug ? { ...it, category: newSlug } : it))
+        : prev
+    );
+  }
+
+  function cancelBuiltinEdit() {
+    setEditingBuiltinSlug(null);
+    setEditingBuiltinValue('');
+  }
+
+  // ─── Inline item field editing ─────────────────────────────────────────────
+
+  function startCellEdit(itemId: string, field: EditableItemField, currentValue: string | null) {
+    setEditingCell({ itemId, field });
+    setEditingValue(currentValue ?? '');
+  }
+
+  const commitCellEdit = useCallback(() => {
+    if (!editingCell) return;
+    const { itemId, field } = editingCell;
+    const newValue = editingValue.trim() || null;
+
+    setItems((prev) => {
+      if (!prev) return prev;
+      return prev.map((it) => {
+        if (it.id !== itemId) return it;
+        if (field === 'name') {
+          // Remap category override from old name → new name
+          if (newValue && newValue !== it.name) {
+            const oldKey = it.name.toLowerCase().trim();
+            const newKey = newValue.toLowerCase().trim();
+            setCategoryOverrides((ov) => {
+              if (!(oldKey in ov)) return ov;
+              const updated = { ...ov };
+              updated[newKey] = updated[oldKey];
+              delete updated[oldKey];
+              return updated;
+            });
+          }
+          return { ...it, name: newValue ?? it.name };
+        }
+        if (field === 'quantity') return { ...it, quantity: newValue };
+        if (field === 'unit') return { ...it, unit: newValue };
+        return it;
+      });
+    });
+
+    setEditingCell(null);
+    setEditingValue('');
+  }, [editingCell, editingValue]);
+
+  function cancelCellEdit() {
+    setEditingCell(null);
+    setEditingValue('');
+  }
+
+  function handleCellKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter') { e.preventDefault(); commitCellEdit(); }
+    if (e.key === 'Escape') { e.preventDefault(); cancelCellEdit(); }
+  }
+
+  function handleBuiltinKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter') { e.preventDefault(); commitBuiltinRename(); }
+    if (e.key === 'Escape') { e.preventDefault(); cancelBuiltinEdit(); }
+  }
+
   const visiblePairs = duplicatePairs.filter((p) => !dismissedPairKeys.has(pairKey(p)));
+
+  // Helper: render an editable cell in the results table
+  function renderEditableCell(
+    item: GroceryItem,
+    field: EditableItemField,
+    displayValue: string | null,
+    className: string
+  ) {
+    const isEditing = editingCell?.itemId === item.id && editingCell.field === field;
+    return (
+      <td
+        className={`py-2 px-3 text-sm cursor-pointer group/cell ${className}`}
+        onClick={() => !isEditing && startCellEdit(item.id, field, displayValue)}
+      >
+        {isEditing ? (
+          <input
+            autoFocus
+            value={editingValue}
+            onChange={(e) => setEditingValue(e.target.value)}
+            onBlur={commitCellEdit}
+            onKeyDown={handleCellKeyDown}
+            className="w-full bg-transparent focus:outline-none border-b border-primary"
+          />
+        ) : (
+          <span className="flex items-center gap-1">
+            {displayValue ?? <span className="text-muted-foreground">—</span>}
+            <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover/cell:opacity-100 transition-opacity shrink-0" />
+          </span>
+        )}
+      </td>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -338,17 +522,39 @@ export function GroceryConsolidatorClient() {
 
             {managePanelOpen && (
               <div className="p-3 space-y-3 border-t border-border">
-                {/* Built-in categories */}
+                {/* Built-in categories — click label to rename */}
                 <div className="space-y-1">
-                  {BUILTIN_CATEGORIES.map((cat) => (
-                    <div
-                      key={cat.slug}
-                      className="flex items-center justify-between py-1 px-2 rounded text-sm"
-                    >
-                      <span>{cat.label}</span>
-                      <span className="text-xs text-muted-foreground">built-in</span>
-                    </div>
-                  ))}
+                  <p className="text-xs text-muted-foreground px-2 pb-0.5">Click a name to rename</p>
+                  {BUILTIN_CATEGORIES.map((cat) => {
+                    const isEditing = editingBuiltinSlug === cat.slug;
+                    const effectiveLabel =
+                      builtinOverrides[cat.slug]?.label ?? cat.label;
+                    return (
+                      <div key={cat.slug} className="flex items-center justify-between py-1 px-2 rounded text-sm group">
+                        {isEditing ? (
+                          <input
+                            ref={builtinInputRef}
+                            value={editingBuiltinValue}
+                            onChange={(e) => setEditingBuiltinValue(e.target.value)}
+                            onBlur={commitBuiltinRename}
+                            onKeyDown={handleBuiltinKeyDown}
+                            className="flex-1 bg-transparent focus:outline-none border-b border-primary text-sm mr-2"
+                          />
+                        ) : (
+                          <button
+                            onClick={() => startEditBuiltin(cat.slug)}
+                            className="flex-1 text-left hover:text-primary transition-colors"
+                          >
+                            {effectiveLabel}
+                            {builtinOverrides[cat.slug] && (
+                              <span className="ml-1.5 text-xs text-muted-foreground">(edited)</span>
+                            )}
+                          </button>
+                        )}
+                        <span className="text-xs text-muted-foreground shrink-0">built-in</span>
+                      </div>
+                    );
+                  })}
                 </div>
 
                 {/* Custom categories */}
@@ -357,7 +563,6 @@ export function GroceryConsolidatorClient() {
                     {customCategories.map((cat) => (
                       <div key={cat.slug}>
                         {deleteConfirm?.slug === cat.slug ? (
-                          /* Inline delete confirmation */
                           <div className="border border-destructive/30 bg-destructive/5 rounded-md p-2 space-y-2">
                             <p className="text-xs text-destructive font-medium">
                               Delete &quot;{cat.label}&quot;? Reassign its items to:
@@ -421,9 +626,7 @@ export function GroceryConsolidatorClient() {
                       type="text"
                       value={newCategoryLabel}
                       onChange={(e) => setNewCategoryLabel(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleAddCategory();
-                      }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleAddCategory(); }}
                       placeholder="New category name…"
                       className="flex-1 text-sm rounded border border-border bg-background px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-ring"
                     />
@@ -451,9 +654,7 @@ export function GroceryConsolidatorClient() {
                 <span className="font-semibold text-foreground">{originalCount}</span> lines →{' '}
                 <span className="font-semibold text-foreground">{items.length}</span> items
                 {omittedItems.length > 0 && (
-                  <span className="text-muted-foreground">
-                    {' '}({omittedItems.length} omitted)
-                  </span>
+                  <span className="text-muted-foreground"> ({omittedItems.length} omitted)</span>
                 )}
               </p>
               <button
@@ -461,15 +662,9 @@ export function GroceryConsolidatorClient() {
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-border rounded-md hover:bg-muted transition-colors shrink-0"
               >
                 {copied ? (
-                  <>
-                    <Check className="h-3.5 w-3.5 text-green-600" />
-                    Copied
-                  </>
+                  <><Check className="h-3.5 w-3.5 text-green-600" />Copied</>
                 ) : (
-                  <>
-                    <Copy className="h-3.5 w-3.5" />
-                    Copy list
-                  </>
+                  <><Copy className="h-3.5 w-3.5" />Copy list</>
                 )}
               </button>
             </div>
@@ -487,17 +682,13 @@ export function GroceryConsolidatorClient() {
                 </div>
                 <div className="space-y-2">
                   {visiblePairs.map((pair) => (
-                    <div
-                      key={pairKey(pair)}
-                      className="border border-amber-200 bg-amber-50 rounded-lg p-3"
-                    >
+                    <div key={pairKey(pair)} className="border border-amber-200 bg-amber-50 rounded-lg p-3">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 flex items-center gap-3 min-w-0">
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate">{pair.itemA.name}</p>
                             <p className="text-xs text-muted-foreground">
-                              {[pair.itemA.quantity, pair.itemA.unit].filter(Boolean).join(' ') ||
-                                'no qty'}
+                              {[pair.itemA.quantity, pair.itemA.unit].filter(Boolean).join(' ') || 'no qty'}
                             </p>
                           </div>
                           <div className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded font-medium shrink-0">
@@ -506,8 +697,7 @@ export function GroceryConsolidatorClient() {
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate">{pair.itemB.name}</p>
                             <p className="text-xs text-muted-foreground">
-                              {[pair.itemB.quantity, pair.itemB.unit].filter(Boolean).join(' ') ||
-                                'no qty'}
+                              {[pair.itemB.quantity, pair.itemB.unit].filter(Boolean).join(' ') || 'no qty'}
                             </p>
                           </div>
                         </div>
@@ -547,15 +737,9 @@ export function GroceryConsolidatorClient() {
                   <tbody>
                     {omittedItems.map((o) => (
                       <tr key={o.item.id} className="border-b border-border last:border-0">
-                        <td className="py-2 px-3 text-sm text-muted-foreground">
-                          {o.originalName}
-                        </td>
+                        <td className="py-2 px-3 text-sm text-muted-foreground">{o.originalName}</td>
                         <td className="py-2 px-3 text-xs text-muted-foreground">
-                          {o.reason === 'bracketed'
-                            ? 'Has [ ] brackets'
-                            : o.reason === 'water'
-                            ? 'Water'
-                            : 'No measurement'}
+                          {o.reason === 'bracketed' ? 'Has [ ] brackets' : o.reason === 'water' ? 'Water' : 'No measurement'}
                         </td>
                         <td className="py-2 px-3 text-center">
                           <button
@@ -596,24 +780,18 @@ export function GroceryConsolidatorClient() {
                       </thead>
                       <tbody>
                         {catItems.map((item) => (
-                          <tr key={item.id} className="border-b border-border last:border-0">
-                            <td className="py-2 px-3 text-sm">{item.name}</td>
-                            <td className="py-2 px-3 text-sm text-center">
-                              {item.quantity ?? '—'}
-                            </td>
-                            <td className="py-2 px-3 text-sm text-center">
-                              {item.unit ?? '—'}
-                            </td>
-                            <td className="py-2 px-3">
+                          <tr key={item.id} className="border-b border-border last:border-0 hover:bg-muted/20">
+                            {renderEditableCell(item, 'name', item.name, 'text-left')}
+                            {renderEditableCell(item, 'quantity', item.quantity, 'text-center w-20')}
+                            {renderEditableCell(item, 'unit', item.unit, 'text-center w-16')}
+                            <td className="py-2 px-3 w-36">
                               <select
                                 value={item.category}
                                 onChange={(e) => handleCategoryChange(item.id, e.target.value)}
                                 className="w-full text-xs rounded border border-border bg-background px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
                               >
                                 {allCategories.map((c) => (
-                                  <option key={c.slug} value={c.slug}>
-                                    {c.label}
-                                  </option>
+                                  <option key={c.slug} value={c.slug}>{c.label}</option>
                                 ))}
                               </select>
                             </td>
