@@ -331,8 +331,18 @@ model IngredientNormCache {
 model CategoryOverride {
   id             String   @id @default(cuid())
   ingredientName String   @unique @map("ingredient_name") // canonical (lowercased, trimmed) name
-  category       String   // 'produce' | 'protein' | 'dairy' | 'pantry' | 'other'
+  category       String   // 'produce' | 'protein' | 'dairy' | 'pantry' | 'other' | custom slug
   updatedAt      DateTime @updatedAt @map("updated_at")
 
   @@map("category_overrides")
+}
+
+model GroceryCategory {
+  id        String   @id @default(cuid())
+  slug      String   @unique              // lowercased, hyphenated key (e.g. "frozen-foods")
+  label     String                        // display name (e.g. "Frozen Foods")
+  sortOrder Int      @default(100) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("grocery_categories")
 }

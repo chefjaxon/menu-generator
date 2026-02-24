@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { ClipboardList, Copy, Check, X } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { ClipboardList, Copy, Check, X, Plus, Trash2, Tag } from 'lucide-react';
 import {
   parsePastedText,
   normalizeIngredientNames,
@@ -11,14 +11,20 @@ import {
 import { findDuplicatePairs } from '@/lib/grocery-similarity';
 import type { GroceryItem, DuplicatePair } from '@/lib/types';
 
-const CATEGORY_ORDER = ['produce', 'protein', 'dairy', 'pantry', 'other'] as const;
-const CATEGORY_LABELS: Record<string, string> = {
-  produce: 'Produce',
-  protein: 'Proteins & Meat',
-  dairy: 'Dairy',
-  pantry: 'Pantry & Dry Goods',
-  other: 'Other',
-};
+// Built-in categories that can never be deleted
+const BUILTIN_CATEGORIES = [
+  { slug: 'produce', label: 'Produce' },
+  { slug: 'protein', label: 'Proteins & Meat' },
+  { slug: 'dairy', label: 'Dairy' },
+  { slug: 'pantry', label: 'Pantry & Dry Goods' },
+  { slug: 'other', label: 'Other' },
+] as const;
+
+interface CustomCategory {
+  slug: string;
+  label: string;
+  sortOrder: number;
+}
 
 function makeStubItem(
   name: string,
@@ -65,11 +71,16 @@ function isWater(name: string): boolean {
 }
 
 // Salt and pepper are pantry staples — always omit regardless of quantity.
-// Flaky sea salt is excluded (kept in list) via its own distinct canonical name.
 const ALWAYS_OMIT_SEASONINGS = new Set(['salt', 'pepper', 'salt and pepper']);
 
 function isSeasoningOmit(name: string): boolean {
   return ALWAYS_OMIT_SEASONINGS.has(name.toLowerCase().trim());
+}
+
+interface DeleteConfirm {
+  slug: string;
+  label: string;
+  reassignTo: string;
 }
 
 export function GroceryConsolidatorClient() {
@@ -82,13 +93,37 @@ export function GroceryConsolidatorClient() {
   const [copied, setCopied] = useState(false);
   const [categoryOverrides, setCategoryOverrides] = useState<Record<string, string>>({});
 
-  // Load DB-backed category overrides on mount so all consolidations benefit
+  // Custom categories
+  const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
+  const [newCategoryLabel, setNewCategoryLabel] = useState('');
+  const [addingCategory, setAddingCategory] = useState(false);
+  const [managePanelOpen, setManagePanelOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirm | null>(null);
+  const [deletingSlug, setDeletingSlug] = useState<string | null>(null);
+  const newCategoryInputRef = useRef<HTMLInputElement>(null);
+
+  // All categories merged: builtins first, then custom
+  const allCategories = [
+    ...BUILTIN_CATEGORIES,
+    ...customCategories.map((c) => ({ slug: c.slug, label: c.label })),
+  ];
+
+  // Load DB-backed category overrides and custom categories on mount
   useEffect(() => {
     fetch('/api/grocery-consolidator/category-override')
       .then((r) => r.json())
       .then((data) => {
         if (data && typeof data === 'object' && !data.error) {
           setCategoryOverrides(data as Record<string, string>);
+        }
+      })
+      .catch(() => {});
+
+    fetch('/api/grocery-consolidator/categories')
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setCustomCategories(data as CustomCategory[]);
         }
       })
       .catch(() => {});
@@ -153,16 +188,13 @@ export function GroceryConsolidatorClient() {
     const item = items?.find((it) => it.id === itemId);
     if (!item) return;
 
-    // Update local state immediately (optimistic)
     setItems((prev) =>
       prev ? prev.map((it) => (it.id === itemId ? { ...it, category: newCategory } : it)) : prev
     );
 
-    // Update in-memory overrides so re-consolidation applies it right away
     const key = item.name.toLowerCase().trim();
     setCategoryOverrides((prev) => ({ ...prev, [key]: newCategory }));
 
-    // Persist to DB — teaches the system for all future runs on any browser (fire and forget)
     fetch('/api/grocery-consolidator/category-override', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -173,10 +205,10 @@ export function GroceryConsolidatorClient() {
   function handleCopy() {
     if (!items) return;
     const blocks: string[] = [];
-    for (const cat of CATEGORY_ORDER) {
-      const catItems = items.filter((it) => it.category === cat);
+    for (const cat of allCategories) {
+      const catItems = items.filter((it) => it.category === cat.slug);
       if (catItems.length === 0) continue;
-      const heading = CATEGORY_LABELS[cat].toUpperCase();
+      const heading = cat.label.toUpperCase();
       const rows = catItems.map((item) =>
         [item.quantity, item.unit, item.name].filter(Boolean).join(' ')
       );
@@ -185,6 +217,69 @@ export function GroceryConsolidatorClient() {
     navigator.clipboard.writeText(blocks.join('\n\n'));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function handleAddCategory() {
+    const label = newCategoryLabel.trim();
+    if (!label) return;
+    setAddingCategory(true);
+    try {
+      const res = await fetch('/api/grocery-consolidator/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label }),
+      });
+      if (res.ok) {
+        const created = await res.json();
+        setCustomCategories((prev) => {
+          // Avoid duplicates (upsert by slug)
+          const without = prev.filter((c) => c.slug !== created.slug);
+          return [...without, created];
+        });
+        setNewCategoryLabel('');
+        newCategoryInputRef.current?.focus();
+      }
+    } finally {
+      setAddingCategory(false);
+    }
+  }
+
+  function handleDeleteClick(cat: CustomCategory) {
+    // Default reassign to 'other'
+    setDeleteConfirm({ slug: cat.slug, label: cat.label, reassignTo: 'other' });
+  }
+
+  async function handleDeleteConfirm() {
+    if (!deleteConfirm) return;
+    const { slug, reassignTo } = deleteConfirm;
+    setDeletingSlug(slug);
+    try {
+      const res = await fetch('/api/grocery-consolidator/categories', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slug, reassignTo }),
+      });
+      if (res.ok) {
+        setCustomCategories((prev) => prev.filter((c) => c.slug !== slug));
+        // Remap any in-memory overrides from deleted slug → reassignTo
+        setCategoryOverrides((prev) => {
+          const updated: Record<string, string> = {};
+          for (const [k, v] of Object.entries(prev)) {
+            updated[k] = v === slug ? reassignTo : v;
+          }
+          return updated;
+        });
+        // Remap any currently displayed items
+        setItems((prev) =>
+          prev
+            ? prev.map((it) => (it.category === slug ? { ...it, category: reassignTo } : it))
+            : prev
+        );
+        setDeleteConfirm(null);
+      }
+    } finally {
+      setDeletingSlug(null);
+    }
   }
 
   const visiblePairs = duplicatePairs.filter((p) => !dismissedPairKeys.has(pairKey(p)));
@@ -222,6 +317,129 @@ export function GroceryConsolidatorClient() {
             <ClipboardList className="h-4 w-4" />
             Consolidate
           </button>
+
+          {/* Manage Categories panel */}
+          <div className="border border-border rounded-lg overflow-hidden">
+            <button
+              onClick={() => setManagePanelOpen((o) => !o)}
+              className="w-full flex items-center justify-between gap-2 px-4 py-2.5 bg-muted/50 hover:bg-muted transition-colors text-sm font-medium"
+            >
+              <span className="flex items-center gap-2">
+                <Tag className="h-4 w-4 text-muted-foreground" />
+                Manage Categories
+                {customCategories.length > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    ({customCategories.length} custom)
+                  </span>
+                )}
+              </span>
+              <span className="text-muted-foreground text-xs">{managePanelOpen ? '▲' : '▼'}</span>
+            </button>
+
+            {managePanelOpen && (
+              <div className="p-3 space-y-3 border-t border-border">
+                {/* Built-in categories */}
+                <div className="space-y-1">
+                  {BUILTIN_CATEGORIES.map((cat) => (
+                    <div
+                      key={cat.slug}
+                      className="flex items-center justify-between py-1 px-2 rounded text-sm"
+                    >
+                      <span>{cat.label}</span>
+                      <span className="text-xs text-muted-foreground">built-in</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Custom categories */}
+                {customCategories.length > 0 && (
+                  <div className="space-y-1 border-t border-border pt-2">
+                    {customCategories.map((cat) => (
+                      <div key={cat.slug}>
+                        {deleteConfirm?.slug === cat.slug ? (
+                          /* Inline delete confirmation */
+                          <div className="border border-destructive/30 bg-destructive/5 rounded-md p-2 space-y-2">
+                            <p className="text-xs text-destructive font-medium">
+                              Delete &quot;{cat.label}&quot;? Reassign its items to:
+                            </p>
+                            <select
+                              value={deleteConfirm.reassignTo}
+                              onChange={(e) =>
+                                setDeleteConfirm((prev) =>
+                                  prev ? { ...prev, reassignTo: e.target.value } : prev
+                                )
+                              }
+                              className="w-full text-xs rounded border border-border bg-background px-2 py-1 focus:outline-none focus:ring-1 focus:ring-ring"
+                            >
+                              {allCategories
+                                .filter((c) => c.slug !== cat.slug)
+                                .map((c) => (
+                                  <option key={c.slug} value={c.slug}>
+                                    {c.label}
+                                  </option>
+                                ))}
+                            </select>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={handleDeleteConfirm}
+                                disabled={deletingSlug === cat.slug}
+                                className="flex-1 px-2 py-1 text-xs bg-destructive text-destructive-foreground rounded hover:bg-destructive/90 transition-colors disabled:opacity-50"
+                              >
+                                {deletingSlug === cat.slug ? 'Deleting…' : 'Confirm Delete'}
+                              </button>
+                              <button
+                                onClick={() => setDeleteConfirm(null)}
+                                disabled={deletingSlug === cat.slug}
+                                className="flex-1 px-2 py-1 text-xs border border-border rounded hover:bg-muted transition-colors disabled:opacity-50"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between py-1 px-2 rounded hover:bg-muted/50 text-sm group">
+                            <span>{cat.label}</span>
+                            <button
+                              onClick={() => handleDeleteClick(cat)}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                              title={`Delete ${cat.label}`}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Add new category */}
+                <div className="border-t border-border pt-2">
+                  <div className="flex gap-2">
+                    <input
+                      ref={newCategoryInputRef}
+                      type="text"
+                      value={newCategoryLabel}
+                      onChange={(e) => setNewCategoryLabel(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleAddCategory();
+                      }}
+                      placeholder="New category name…"
+                      className="flex-1 text-sm rounded border border-border bg-background px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-ring"
+                    />
+                    <button
+                      onClick={handleAddCategory}
+                      disabled={!newCategoryLabel.trim() || addingCategory}
+                      className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      Add
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Results panel */}
@@ -357,14 +575,14 @@ export function GroceryConsolidatorClient() {
 
             {/* Results grouped by category */}
             <div className="space-y-3">
-              {CATEGORY_ORDER.map((cat) => {
-                const catItems = items.filter((it) => it.category === cat);
+              {allCategories.map((cat) => {
+                const catItems = items.filter((it) => it.category === cat.slug);
                 if (catItems.length === 0) return null;
                 return (
-                  <div key={cat} className="border border-border rounded-lg overflow-hidden">
+                  <div key={cat.slug} className="border border-border rounded-lg overflow-hidden">
                     <div className="bg-muted/70 px-4 py-2 border-b border-border">
                       <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        {CATEGORY_LABELS[cat]} ({catItems.length})
+                        {cat.label} ({catItems.length})
                       </h3>
                     </div>
                     <table className="w-full">
@@ -392,9 +610,9 @@ export function GroceryConsolidatorClient() {
                                 onChange={(e) => handleCategoryChange(item.id, e.target.value)}
                                 className="w-full text-xs rounded border border-border bg-background px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
                               >
-                                {CATEGORY_ORDER.map((c) => (
-                                  <option key={c} value={c}>
-                                    {CATEGORY_LABELS[c]}
+                                {allCategories.map((c) => (
+                                  <option key={c.slug} value={c.slug}>
+                                    {c.label}
                                   </option>
                                 ))}
                               </select>
