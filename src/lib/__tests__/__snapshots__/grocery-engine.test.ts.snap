@@ -456,9 +456,9 @@ exports[`Grocery engine — golden snapshots (15 scenarios) > scenario: 06_mixed
   },
   {
     "name": "lemon juice",
-    "notes": null,
-    "quantity": "1",
-    "unit": "tbsp",
+    "notes": "juiced",
+    "quantity": "½",
+    "unit": "lemons",
   },
   {
     "name": "onion",
