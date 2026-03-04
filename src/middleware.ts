@@ -44,8 +44,7 @@ export function middleware(request: NextRequest) {
   // Admin routes — allow login and auth API
   if (
     pathname === '/login' ||
-    pathname.startsWith('/api/auth/') ||
-    pathname === '/api/admin/backup'
+    pathname.startsWith('/api/auth/')
   ) {
     return NextResponse.next();
   }
