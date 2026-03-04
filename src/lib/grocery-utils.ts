@@ -168,7 +168,7 @@ export function buildGroceryFromData(
 
           if (ing.role === 'core' || ing.role === 'garnish') {
             const candidate = ing.swaps
-              .filter((s) => canonicalizeRestriction(s.restriction) === restriction)
+              .filter((s) => canonicalizeRestriction(s.restriction) === canonicalizeRestriction(restriction))
               .sort((a, b) => b.priority - a.priority)[0];
             if (candidate && (!appliedSwap || candidate.priority > ((appliedSwap as { priority?: number }).priority ?? 0))) {
               appliedSwap = candidate;
@@ -269,12 +269,18 @@ export function buildGroceryFromData(
   // Step 1: Static alias normalization
   const aliasNormalized = normalizeIngredientNames(rawItems);
 
-  // Step 2: Separate no-qty/no-unit items
+  // Step 2: Separate no-qty/no-unit items.
+  // Items with a measured quantity stay in toKeepRaw.
+  // Items with no quantity AND no unit are moved to toRemoveRaw, annotated with
+  // notes:"as needed" so the UI can surface them in a dedicated "stock check" section
+  // rather than silently omitting them from the list.
   const toKeepRaw: GroceryItem[] = [];
   const toRemoveRaw: GroceryItem[] = [];
   for (const item of aliasNormalized) {
     if (item.quantity === null && item.unit === null) {
-      toRemoveRaw.push(item);
+      // Preserve any existing notes; append "as needed" marker for UI rendering.
+      const asNeededNote = item.notes ? `${item.notes}; as needed` : 'as needed';
+      toRemoveRaw.push({ ...item, notes: asNeededNote });
     } else {
       toKeepRaw.push(item);
     }
@@ -283,7 +289,8 @@ export function buildGroceryFromData(
   // Step 3: Consolidate exact duplicates among kept items
   const toKeep = consolidateExactDuplicates(toKeepRaw).map(convertCitrusJuiceToCount);
 
-  // Step 4: Deduplicate removed items by canonical name
+  // Step 4: Deduplicate removed items by canonical name.
+  // When the same no-qty ingredient appears in multiple recipes, keep only one entry.
   const removedByName = new Map<string, GroceryItem>();
   for (const item of toRemoveRaw) {
     const key = item.name.toLowerCase().trim();

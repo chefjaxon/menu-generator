@@ -297,6 +297,13 @@ export const INGREDIENT_CATEGORIES: Map<string, string> = new Map([
   ['salmon fillet', 'protein'],
   ['strip steak', 'protein'],
 
+  // === PROTEIN — singular canonical aliases ===
+  // ingredient-aliases.ts normalizes these to singular forms; categories must match.
+  ['chickpea', 'protein'],      // aliases: chickpeas → chickpea
+  ['black bean', 'protein'],    // aliases: black beans → black bean
+  ['white bean', 'protein'],    // aliases: white beans → white bean
+  ['chicken tender', 'protein'],// aliases: chicken tenders/strips → chicken tender
+
   // === OTHER (water — will be auto-omitted by isWater check) ===
   ['water', 'other'],
 

@@ -75,10 +75,33 @@ function hasBrackets(name: string): boolean {
 
 function isWater(name: string): boolean {
   const n = name.toLowerCase().trim();
-  return n === 'water' || n.startsWith('filtered water');
+  return (
+    n === 'water' ||
+    n.startsWith('filtered water') ||
+    n.startsWith('sparkling water') ||
+    n.startsWith('ice water') ||
+    n.startsWith('warm water') ||
+    n.startsWith('cold water')
+  );
 }
 
-const ALWAYS_OMIT_SEASONINGS = new Set(['salt', 'pepper', 'salt and pepper']);
+// Exact names that should always be omitted regardless of quantity — these are universal
+// pantry staples every meal-prep client already has stocked.
+// Conservative by design: only add items that are TRULY universal (salt, pepper, spray).
+// "cumin", "chili powder", etc. are NOT here because they may need to be purchased.
+const ALWAYS_OMIT_SEASONINGS = new Set([
+  // Salt variants
+  'salt', 'kosher salt', 'sea salt', 'table salt', 'coarse salt', 'flaky salt',
+  'fine salt', 'fine sea salt', 'coarse kosher salt',
+  // Pepper variants (standalone, not produce like "bell pepper")
+  // white pepper intentionally excluded — some clients may not have it stocked
+  'pepper', 'black pepper', 'ground pepper', 'cracked pepper',
+  'freshly ground pepper', 'freshly cracked pepper',
+  // Salt & pepper combos
+  'salt and pepper', 'salt & pepper', 'salt & black pepper', 'salt and black pepper',
+  // Cooking spray
+  'cooking spray', 'nonstick spray', 'nonstick cooking spray',
+]);
 
 function isSeasoningOmit(name: string): boolean {
   return ALWAYS_OMIT_SEASONINGS.has(name.toLowerCase().trim());
@@ -687,8 +710,15 @@ export function GroceryConsolidatorClient() {
               <p className="text-sm text-muted-foreground">
                 <span className="font-semibold text-foreground">{originalCount}</span> lines →{' '}
                 <span className="font-semibold text-foreground">{items.length}</span> items
-                {omittedItems.length > 0 && (
-                  <span className="text-muted-foreground"> ({omittedItems.length} omitted)</span>
+                {omittedItems.filter((o) => o.reason === 'seasoning' || o.reason === 'no-quantity').length > 0 && (
+                  <span className="text-amber-700">
+                    {' '}({omittedItems.filter((o) => o.reason === 'seasoning' || o.reason === 'no-quantity').length} pantry check)
+                  </span>
+                )}
+                {omittedItems.filter((o) => o.reason === 'water' || o.reason === 'bracketed').length > 0 && (
+                  <span className="text-muted-foreground">
+                    {' '}({omittedItems.filter((o) => o.reason === 'water' || o.reason === 'bracketed').length} skipped)
+                  </span>
                 )}
               </p>
               <button
@@ -749,47 +779,95 @@ export function GroceryConsolidatorClient() {
               </div>
             )}
 
-            {/* Omitted items */}
-            {omittedItems.length > 0 && (
-              <div className="border border-border rounded-lg overflow-hidden">
-                <div className="bg-muted/70 px-4 py-2 border-b border-border flex items-center justify-between">
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Omitted Items ({omittedItems.length})
-                  </h3>
-                  <span className="text-xs text-muted-foreground">
-                    Click + to add to the consolidated list
-                  </span>
-                </div>
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground">
-                      <th className="py-2 px-3 text-left">Name</th>
-                      <th className="py-2 px-3 text-left w-40">Reason</th>
-                      <th className="py-2 px-3 text-center w-16"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {omittedItems.map((o) => (
-                      <tr key={o.item.id} className="border-b border-border last:border-0">
-                        <td className="py-2 px-3 text-sm text-muted-foreground">{o.originalName}</td>
-                        <td className="py-2 px-3 text-xs text-muted-foreground">
-                          {o.reason === 'bracketed' ? 'Has [ ] brackets' : o.reason === 'water' ? 'Water' : 'No measurement'}
-                        </td>
-                        <td className="py-2 px-3 text-center">
-                          <button
-                            onClick={() => handleAddOmitted(o)}
-                            className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-colors"
-                            title="Add to consolidated list"
-                          >
-                            +
-                          </button>
-                        </td>
+            {/* Pantry Check — seasonings and no-qty items the shopper should verify */}
+            {omittedItems.some((o) => o.reason === 'seasoning' || o.reason === 'no-quantity') && (() => {
+              const pantryItems = omittedItems.filter((o) => o.reason === 'seasoning' || o.reason === 'no-quantity');
+              return (
+                <div className="border border-amber-200 rounded-lg overflow-hidden">
+                  <div className="bg-amber-50 px-4 py-2 border-b border-amber-200 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-xs font-semibold uppercase tracking-wide text-amber-800">
+                        Pantry Check ({pantryItems.length})
+                      </h3>
+                      <p className="text-xs text-amber-700 mt-0.5">Verify you have these stocked — click + to add to shopping list</p>
+                    </div>
+                  </div>
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-amber-50/60 border-b border-amber-100 text-xs font-medium text-amber-700">
+                        <th className="py-2 px-3 text-left">Name</th>
+                        <th className="py-2 px-3 text-left w-44">Note</th>
+                        <th className="py-2 px-3 text-center w-16"></th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                    </thead>
+                    <tbody>
+                      {pantryItems.map((o) => (
+                        <tr key={o.item.id} className="border-b border-amber-100 last:border-0 hover:bg-amber-50/40">
+                          <td className="py-2 px-3 text-sm text-foreground">{o.originalName}</td>
+                          <td className="py-2 px-3 text-xs text-muted-foreground">
+                            {o.reason === 'seasoning' ? 'Universal staple' : 'No measurement — as needed'}
+                          </td>
+                          <td className="py-2 px-3 text-center">
+                            <button
+                              onClick={() => handleAddOmitted(o)}
+                              className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-colors"
+                              title="Add to shopping list"
+                            >
+                              +
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
+
+            {/* Skipped Automatically — water and bracketed items removed silently */}
+            {omittedItems.some((o) => o.reason === 'water' || o.reason === 'bracketed') && (() => {
+              const skippedItems = omittedItems.filter((o) => o.reason === 'water' || o.reason === 'bracketed');
+              return (
+                <div className="border border-border rounded-lg overflow-hidden">
+                  <div className="bg-muted/50 px-4 py-2 border-b border-border flex items-center justify-between">
+                    <div>
+                      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Skipped Automatically ({skippedItems.length})
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">Removed for formatting reasons — click + to restore</p>
+                    </div>
+                  </div>
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-muted/30 border-b border-border text-xs font-medium text-muted-foreground">
+                        <th className="py-2 px-3 text-left">Name</th>
+                        <th className="py-2 px-3 text-left w-44">Reason</th>
+                        <th className="py-2 px-3 text-center w-16"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {skippedItems.map((o) => (
+                        <tr key={o.item.id} className="border-b border-border last:border-0 hover:bg-muted/20">
+                          <td className="py-2 px-3 text-sm text-muted-foreground">{o.originalName}</td>
+                          <td className="py-2 px-3 text-xs text-muted-foreground">
+                            {o.reason === 'water' ? 'Water — skip' : 'Has [ ] brackets'}
+                          </td>
+                          <td className="py-2 px-3 text-center">
+                            <button
+                              onClick={() => handleAddOmitted(o)}
+                              className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-muted-foreground/20 text-muted-foreground text-xs font-bold hover:bg-muted-foreground/30 transition-colors"
+                              title="Restore to shopping list"
+                            >
+                              +
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
 
             {/* Results grouped by category */}
             <div className="space-y-3">
