@@ -41,10 +41,11 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Admin routes — allow login and auth API
+  // Admin routes — allow login, auth API, and backup endpoint (uses its own Bearer auth)
   if (
     pathname === '/login' ||
-    pathname.startsWith('/api/auth/')
+    pathname.startsWith('/api/auth/') ||
+    pathname === '/api/admin/backup'
   ) {
     return NextResponse.next();
   }
