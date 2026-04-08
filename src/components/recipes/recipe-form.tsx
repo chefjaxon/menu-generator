@@ -79,7 +79,6 @@ export function RecipeForm({ recipe }: { recipe?: Recipe }) {
   const [availableProteins, setAvailableProteins] = useState<string[]>([]);
   const [scraping, setScraping] = useState(false);
   const [scrapeError, setScrapeError] = useState('');
-  const [tagInput, setTagInput] = useState('');
 
   useEffect(() => {
     fetch('/api/proteins')
@@ -191,25 +190,17 @@ export function RecipeForm({ recipe }: { recipe?: Recipe }) {
     }));
   }
 
-  function addTag(tag: string) {
-    const trimmed = tag.trim().toLowerCase();
-    if (!trimmed) return;
+  function toggleTag(tag: string) {
     setForm((prev) => ({
       ...prev,
-      tags: prev.tags.includes(trimmed) ? prev.tags : [...prev.tags, trimmed].sort(),
+      tags: prev.tags.includes(tag)
+        ? prev.tags.filter((t) => t !== tag)
+        : [...prev.tags, tag].sort(),
     }));
-    setTagInput('');
   }
 
   function removeTag(tag: string) {
     setForm((prev) => ({ ...prev, tags: prev.tags.filter((t) => t !== tag) }));
-  }
-
-  function handleTagKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Enter' || e.key === ',') {
-      e.preventDefault();
-      addTag(tagInput);
-    }
   }
 
   async function handleRecipeKeeperBlur() {
@@ -460,59 +451,47 @@ export function RecipeForm({ recipe }: { recipe?: Recipe }) {
       <div>
         <label className="block text-sm font-medium mb-1">Contains Tags</label>
         <p className="text-xs text-muted-foreground mb-2">
-          Tag ingredients that match common dietary restrictions (e.g. dairy, gluten, nuts). Used to filter recipes for clients with those restrictions.
+          Tag any restricted ingredients this recipe contains. Used to automatically exclude the recipe for clients with those restrictions.
         </p>
-        {/* Current tags as chips */}
-        {form.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mb-2">
-            {form.tags.map((tag) => (
-              <span
-                key={tag}
-                className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 rounded-full text-xs"
-              >
-                {tag}
-                <button
-                  type="button"
-                  onClick={() => removeTag(tag)}
-                  className="text-amber-600 hover:text-amber-900"
+        <div className="flex flex-wrap gap-2">
+          {COMMON_EXCLUSIONS.map((tag) => (
+            <button
+              key={tag}
+              type="button"
+              onClick={() => toggleTag(tag)}
+              className={`px-3 py-1.5 rounded-md text-sm border transition-colors ${
+                form.tags.includes(tag)
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'border-border hover:bg-muted'
+              }`}
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+        {/* Show any legacy tags not in the standard vocabulary */}
+        {form.tags.filter((t) => !COMMON_EXCLUSIONS.includes(t)).length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            <span className="text-xs text-muted-foreground self-center">Other:</span>
+            {form.tags
+              .filter((t) => !COMMON_EXCLUSIONS.includes(t))
+              .map((tag) => (
+                <span
+                  key={tag}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 rounded-full text-xs"
                 >
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
-            ))}
+                  {tag}
+                  <button
+                    type="button"
+                    onClick={() => removeTag(tag)}
+                    className="text-amber-600 hover:text-amber-900"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
           </div>
         )}
-        {/* Tag input */}
-        <input
-          type="text"
-          value={tagInput}
-          onChange={(e) => setTagInput(e.target.value)}
-          onKeyDown={handleTagKeyDown}
-          onBlur={() => { if (tagInput.trim()) addTag(tagInput); }}
-          placeholder="Type a tag and press Enter (e.g. dairy)"
-          className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-        {/* Suggestions */}
-        {(() => {
-          const suggestions = COMMON_EXCLUSIONS.filter(
-            (s) => !form.tags.includes(s.toLowerCase())
-          );
-          return suggestions.length > 0 ? (
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              <span className="text-xs text-muted-foreground self-center">Suggestions:</span>
-              {suggestions.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => addTag(s)}
-                  className="px-2 py-0.5 border border-dashed border-border rounded-full text-xs text-muted-foreground hover:border-amber-400 hover:text-amber-700 transition-colors"
-                >
-                  + {s}
-                </button>
-              ))}
-            </div>
-          ) : null;
-        })()}
       </div>
 
       <div>
