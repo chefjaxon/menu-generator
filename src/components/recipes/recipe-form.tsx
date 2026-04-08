@@ -79,6 +79,7 @@ export function RecipeForm({ recipe }: { recipe?: Recipe }) {
   const [availableProteins, setAvailableProteins] = useState<string[]>([]);
   const [scraping, setScraping] = useState(false);
   const [scrapeError, setScrapeError] = useState('');
+  const [tagInput, setTagInput] = useState('');
 
   useEffect(() => {
     fetch('/api/proteins')
@@ -197,6 +198,16 @@ export function RecipeForm({ recipe }: { recipe?: Recipe }) {
         ? prev.tags.filter((t) => t !== tag)
         : [...prev.tags, tag].sort(),
     }));
+  }
+
+  function addCustomTag(tag: string) {
+    const trimmed = tag.trim().toLowerCase();
+    if (!trimmed) return;
+    setForm((prev) => ({
+      ...prev,
+      tags: prev.tags.includes(trimmed) ? prev.tags : [...prev.tags, trimmed].sort(),
+    }));
+    setTagInput('');
   }
 
   function removeTag(tag: string) {
@@ -469,10 +480,36 @@ export function RecipeForm({ recipe }: { recipe?: Recipe }) {
             </button>
           ))}
         </div>
-        {/* Show any legacy tags not in the standard vocabulary */}
+        {/* Custom tag input for anything not in the standard list */}
+        <div className="mt-3">
+          <label className="block text-xs text-muted-foreground mb-1">Custom tag (if not listed above)</label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ',') {
+                  e.preventDefault();
+                  addCustomTag(tagInput);
+                }
+              }}
+              onBlur={() => { if (tagInput.trim()) addCustomTag(tagInput); }}
+              placeholder="e.g. lamb, pine nuts"
+              className="flex-1 px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+            <button
+              type="button"
+              onClick={() => addCustomTag(tagInput)}
+              className="px-3 py-2 border border-border rounded-md text-sm hover:bg-muted"
+            >
+              Add
+            </button>
+          </div>
+        </div>
+        {/* Show custom tags (not in standard vocabulary) as removable chips */}
         {form.tags.filter((t) => !COMMON_EXCLUSIONS.includes(t)).length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-2">
-            <span className="text-xs text-muted-foreground self-center">Other:</span>
             {form.tags
               .filter((t) => !COMMON_EXCLUSIONS.includes(t))
               .map((tag) => (
